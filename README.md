@@ -31,12 +31,21 @@ else can look at it. Then you can access the metrics with a URL like:
 
 http://your_server_name/metrics
 
-
 ## Contributing
 Pull requests are welcome. For major changes, please open an issue first to discuss
 what you would like to change.
 
 Please make sure to update tests as appropriate.
+
+## Roadmap
+
+  - [ ] add response time histogram
+  - [ ] add response size histogram
+  - [ ] add per location match label
+  - [ ] make vhost label optional
+  - [ ] add server info metric
+  - [ ] add number of vhosts metric
+  - [ ] add docker based tests
 
 ## License
 [MIT](https://choosealicense.com/licenses/mit/)

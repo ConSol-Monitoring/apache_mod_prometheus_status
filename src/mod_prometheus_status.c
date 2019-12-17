@@ -34,7 +34,6 @@ static int prometheus_status_handler(request_rec *r) {
 /* prometheus_status_counter is called on each request to update counter */
 static int prometheus_status_counter(request_rec *r) {
     //ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, "prometheus_status_counter");
-    // TODO: write test for vhost
     char status[4];
     snprintf(status, 4, "%d", r->status);
     prom_counter_inc(request_counter, (const char *[]){r->method, status, r->server->addrs->virthost});
@@ -45,12 +44,6 @@ static int prometheus_status_counter(request_rec *r) {
 static int prometheus_status_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *s) {
     server_addr_rec *vhost;
     prom_collector_registry_default_init();
-
-    /* TODO:
-         metrics:
-           - server_info
-           - number vhosts
-    */
 
     // initialize request counter with known standard http methods and all known vhosts
     request_counter = prom_collector_registry_must_register_metric(prom_counter_new("request_counter", "count http requests using the method and virtualhost-name as label", 3, (const char *[]) { "method", "status", "vhost" }));
