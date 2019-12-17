@@ -1,0 +1,13 @@
+*.o
+*.ko
+*.slo
+*.lib
+.libs/
+*.a
+*.la
+*.lo
+*.so
+*.so.*
+*.dylib
+.vscode
+vendor/
