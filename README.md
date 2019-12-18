@@ -4,9 +4,9 @@ mod_prometheus_status is a [Prometheus](https://prometheus.io/) white box export
 
 ## Requirements
 
-  - gcc compiler to build
+  - gcc compiler to build (4.9 or newer)
     - apache header files
-  - docker for running tests only
+  - docker/docker-compose for running tests
 
 ## Installation
 
@@ -37,15 +37,40 @@ what you would like to change.
 
 Please make sure to update tests as appropriate.
 
+### Development Environment
+
+There is a test/dev docker box located in `t/testbox` which can be started for
+easy testing and development.
+
+```bash
+  make testbox
+```
+
+This creates a centos 7 box which builds the module whenever the source file changes.
+You can access the module at `http://localhost:3000/metrics`. It might take a moment
+to startup.
+
+Run the unit/integration tests like this:
+
+```bash
+  make test
+```
+
+Cleanup docker machines and test environment by
+
+```bash
+  make clean
+```
+
 ## Roadmap
 
   - [ ] add response time histogram
   - [ ] add response size histogram
   - [ ] add per location match label
-  - [ ] make vhost label optional
-  - [ ] add server info metric
+  - [ ] add optional vhost label
   - [ ] add number of vhosts metric
   - [ ] add docker based tests
+  - [ ] add test for reloading apache
 
 ## License
 [MIT](https://choosealicense.com/licenses/mit/)

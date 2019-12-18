@@ -24,6 +24,7 @@ install: mod_prometheus_status.so
 
 clean:
 	rm -rf $(DISTFILE) *.so src/.libs/ src/*.la src/*.lo src/*.slo
+	-$(MAKE) -C t clean
 
 dist: $(DISTFILE)
 
@@ -32,7 +33,7 @@ $(DISTFILE): $(DEPENDENCIES)
 	@echo "$(DISTFILE) created"
 
 test:
-	# TODO: implement
+	$(MAKE) -C t test
 
 mod_prometheus_status.so: src/mod_prometheus_status.c $(DEPENDENCIES)
 	$(APXS) -c -n $@ $(INCLUDES) $(LIBS) $(SRC)

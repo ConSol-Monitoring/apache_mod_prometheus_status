@@ -1,0 +1,20 @@
+version: "2.3"
+
+networks:
+  test.local:
+
+services:
+  apache:
+    build: apache/
+    ports:
+        - "3000:5000"
+    volumes:
+        - ../../:/src:ro
+    networks:
+      test.local:
+        aliases:
+          - apache.test.local
+          - vhost-a.test.local
+          - vhost-b.test.local
+    hostname: apache
+    domainname: test.local
