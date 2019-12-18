@@ -26,7 +26,6 @@ static int prometheus_status_handler(request_rec *r) {
     if(!r->header_only) {
         const char *buf = prom_collector_registry_bridge(PROM_COLLECTOR_REGISTRY_DEFAULT);
         ap_rputs(buf, r);
-        free(buf);
     }
     return OK;
 }
@@ -36,23 +35,25 @@ static int prometheus_status_counter(request_rec *r) {
     //ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, "prometheus_status_counter");
     char status[4];
     snprintf(status, 4, "%d", r->status);
-    prom_counter_inc(request_counter, (const char *[]){r->method, status, r->server->addrs->virthost});
+    prom_counter_inc(request_counter, (const char *[]){r->method, status});
     return OK;
 }
 
 /* prometheus_status_init registers and initializes all counter */
 static int prometheus_status_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *s) {
-    server_addr_rec *vhost;
+    prom_counter_t *vhost_counter, *server_info_counter;
+
     prom_collector_registry_default_init();
 
-    // initialize request counter with known standard http methods and all known vhosts
-    request_counter = prom_collector_registry_must_register_metric(prom_counter_new("request_counter", "count http requests using the method and virtualhost-name as label", 3, (const char *[]) { "method", "status", "vhost" }));
-    vhost = s->addrs;
-    while(vhost != NULL) {
-        prom_counter_add(request_counter, 0, (const char *[]){"GET", "200", s->addrs->virthost});
-        prom_counter_add(request_counter, 0, (const char *[]){"POST", "200", s->addrs->virthost});
-        vhost = vhost->next;
-    }
+    // initialize server_info counter
+    server_info_counter = prom_collector_registry_must_register_metric(prom_counter_new("apache_server_info", "information about the apache version", 1, (const char *[]) { "server_description" }));
+    prom_counter_add(server_info_counter, 0, (const char *[]){ap_get_server_description()});
+
+    // initialize request counter with known standard http methods
+    request_counter = prom_collector_registry_must_register_metric(prom_counter_new("apache_requests_total", "is the total number of http requests", 2, (const char *[]) { "method", "status" }));
+    prom_counter_add(request_counter, 0, (const char *[]){"GET", "200"});
+    prom_counter_add(request_counter, 0, (const char *[]){"POST", "200"});
+    prom_counter_add(request_counter, 0, (const char *[]){"HEAD", "200"});
 
     return OK;
 }
