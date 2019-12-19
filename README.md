@@ -37,6 +37,16 @@ else can look at it. Then you can access the metrics with a URL like:
 
 http://your_server_name/metrics
 
+## Metrics
+
+So far this modules supports the following metrics:
+
+  * server_info
+  * requests total number
+  * request response size histogram
+  * request response size histogram
+
+
 ## Contributing
 Pull requests are welcome. For major changes, please open an issue first to discuss
 what you would like to change.
