@@ -55,6 +55,7 @@ prom_counter_t *request_counter = NULL;
 prom_gauge_t *server_uptime_gauge = NULL;
 prom_gauge_t *server_mpm_generation_gauge = NULL;
 prom_gauge_t *server_config_generation_gauge = NULL;
+prom_gauge_t *server_cpu_load_gauge = NULL;
 prom_gauge_t *workers_gauge = NULL;
 prom_histogram_t *response_time_histogram = NULL;
 prom_histogram_t *response_size_histogram = NULL;
@@ -122,6 +123,7 @@ static int prometheus_status_monitor() {
     ap_generation_t mpm_generation;
     apr_interval_time_t up_time;
     apr_time_t nowtime;
+    ap_loadavg_t cpu;
 
     ap_mpm_query(AP_MPMQ_GENERATION, &mpm_generation);
 
@@ -131,6 +133,9 @@ static int prometheus_status_monitor() {
 
     prom_gauge_set(server_mpm_generation_gauge, mpm_generation, NULL);
     prom_gauge_set(server_config_generation_gauge, ap_state_query(AP_SQ_CONFIG_GEN), NULL);
+
+    ap_get_loadavg(&cpu);
+    prom_gauge_set(server_cpu_load_gauge, cpu.loadavg, NULL);
 
     for(i = 0; i < server_limit; ++i) {
         ps_record = ap_get_scoreboard_process(i);
@@ -192,6 +197,11 @@ static int prometheus_status_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *p
     prom_gauge_destroy(server_mpm_generation_gauge);
     server_mpm_generation_gauge = prom_collector_registry_must_register_metric(prom_gauge_new("apache_server_mpm_generation", "current mpm generation", 0, NULL));
     prom_gauge_set(server_mpm_generation_gauge, 0, NULL);
+
+    // initialize server_cpu_load_gauge
+    prom_gauge_destroy(server_cpu_load_gauge);
+    server_cpu_load_gauge = prom_collector_registry_must_register_metric(prom_gauge_new("apache_cpu_load", "CPU Load 1", 0, NULL));
+    prom_gauge_set(server_cpu_load_gauge, 0, NULL);
 
     prom_counter_destroy(workers_gauge);
     workers_gauge = prom_collector_registry_must_register_metric(prom_gauge_new("apache_workers", "is the total number of apache workers", 1, (const char *[]) { "state" }));
