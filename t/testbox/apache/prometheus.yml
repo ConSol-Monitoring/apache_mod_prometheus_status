@@ -1,8 +1,4 @@
-global:
-  scrape_interval:     5s
-  evaluation_interval: 5s
-
-scrape_configs:
   - job_name: 'apache'
+    scrape_interval:     5s
     static_configs:
          - targets: ['apache.test.local:8080']

@@ -35,6 +35,9 @@ $(DISTFILE): $(DEPENDENCIES)
 test:
 	$(MAKE) -C t test
 
+testbox:
+	$(MAKE) -C t testbox
+
 mod_prometheus_status.so: src/mod_prometheus_status.c $(DEPENDENCIES)
 	$(APXS) -c -n $@ $(INCLUDES) $(LIBS) $(SRC)
 	install src/.libs/mod_prometheus_status.so mod_prometheus_status.so

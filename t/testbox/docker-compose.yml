@@ -8,6 +8,7 @@ services:
     build: apache/
     ports:
         - "3000:5000"
+        - "3001:5001"
     volumes:
         - ../../:/src:ro
     networks:

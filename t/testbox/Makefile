@@ -9,37 +9,38 @@ endif
 wait_start:
 	for x in $$(seq 180); do \
 		if curl -sq http://localhost:3000 >/dev/null; then break; else sleep 1; fi; \
-		if [ $$x -eq 180 ]; then echo "startup failed"; $(MAKE) failed_start; exit 1; fi; \
+		if [ $$x -eq 180 ]; then echo "startup failed"; exit 1; fi; \
 	done
 
-failed_start:
-	-docker-compose logs --tail=30 --no-color -t | sort
-
 test: wait_start
-	@echo "### $@: $$(date "+%FT%T.%N")"
 	docker-compose exec $(DOCKER_COMPOSE_TTY) --user root apache sudo -iu demo /src/t/testbox/local_test.sh 0
 
 test_verbose: wait_start
-	@echo "### $@: $$(date "+%FT%T.%N")"
 	docker-compose exec $(DOCKER_COMPOSE_TTY) --user root apache sudo -iu demo /src/t/testbox/local_test.sh 1
 
 prepare:
-	@echo "### $@: $$(date "+%FT%T.%N")"
 	docker-compose build
 	docker-compose up --remove-orphans -d
 	docker ps
-	@echo "### $@: $$(date "+%FT%T.%N")"
+	@echo "waiting for testbox to provisioning"
+	@docker-compose logs -f | while read LOGLINE; do \
+		echo "$${LOGLINE}"; \
+		[[ "$${LOGLINE}" == *"Starting Apache web server"* ]] && pkill -P $$$$ docker-compose && exit 0; \
+	done
+	@echo "************************************************************************************"
+	@echo "testbox startup complete:"
+	@echo "you can access the metrics exporter at http://localhost:3000/metrics"
+	@echo "you can access the grafana dashboard at http://localhost:3001/dashboard/grafana"
+	@echo "you can access the prometheus instance at http://localhost:3001/dashboard/prometheus"
+	@echo "************************************************************************************"
+	@echo ""
 
 clean:
-	@echo "### $@: $$(date "+%FT%T.%N")"
 	docker-compose kill
 	docker-compose rm -f
 	-docker network prune -f
 	-[ $$(docker ps -q | wc -l) -eq 0 ] || docker kill $$(docker ps -q)
-	@echo "### $@: $$(date "+%FT%T.%N")"
 
 update:
-	@echo "### $@: $$(date "+%FT%T.%N")"
 	docker-compose pull
 	for IMG in $$(grep FROM */Dockerfile | awk '{ print $$2 }' | sort -u); do docker pull $$IMG; done
-	@echo "### $@: $$(date "+%FT%T.%N")"

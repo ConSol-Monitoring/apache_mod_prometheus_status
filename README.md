@@ -50,6 +50,9 @@ This creates a centos 7 box which builds the module whenever the source file cha
 You can access the module at `http://localhost:3000/metrics`. It might take a moment
 to startup.
 
+You can access the grafana dashboard at `http://localhost:3001/dashboard/grafana/` and the
+Prometheus instance at `http://localhost:3001/dashboard/prometheus/`.
+
 Run the unit/integration tests like this:
 
 ```bash

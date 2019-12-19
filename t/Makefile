@@ -1,3 +1,5 @@
+.PHONY: testbox
+
 testbox:
 	$(MAKE) -C testbox clean update prepare
 
