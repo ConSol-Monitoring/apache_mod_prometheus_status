@@ -218,12 +218,12 @@ static int prometheus_status_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *p
     // initialize server_info counter
     prom_counter_destroy(server_info_counter);
     server_info_counter = prom_collector_registry_must_register_metric(prom_counter_new("apache_server_info", "information about the apache version", 1, (const char *[]) { "server_description" }));
-    prom_counter_add(server_info_counter, 0, (const char *[]){ap_get_server_description()});
+    prom_counter_add(server_info_counter, 1, (const char *[]){ap_get_server_description()});
 
     // initialize server_name counter
     prom_counter_destroy(server_name_counter);
     server_name_counter = prom_collector_registry_must_register_metric(prom_counter_new("apache_server_name", "contains the server name", 1, (const char *[]) { "server_name" }));
-    prom_counter_add(server_name_counter, 0, (const char *[]){s->server_hostname});
+    prom_counter_add(server_name_counter, 1, (const char *[]){s->server_hostname});
 
     // initialize server_uptime counter
     prom_gauge_destroy(server_uptime_gauge);
