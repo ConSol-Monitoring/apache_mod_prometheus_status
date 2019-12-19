@@ -12,9 +12,9 @@
 #define VERSION 0.0.1
 #define NAME "mod_prometheus_status"
 
-prom_counter_t *request_counter;
-prom_histogram_t *response_time_histogram;
-prom_histogram_t *response_size_histogram;
+prom_counter_t *request_counter = NULL;
+prom_histogram_t *response_time_histogram = NULL;
+prom_histogram_t *response_size_histogram = NULL;
 
 /* prometheus_status_handler responds to /metrics requests */
 static int prometheus_status_handler(request_rec *r) {
@@ -47,22 +47,32 @@ static int prometheus_status_counter(request_rec *r) {
     return OK;
 }
 
+/* This hook gets run periodically by a maintenance function inside the MPM. */
+static int prometheus_status_monitor(apr_pool_t *p, server_rec *s)
+{
+    return OK;
+}
+
 /* prometheus_status_init registers and initializes all counter */
 static int prometheus_status_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *s) {
     prom_counter_t *server_info_counter;
 
+    prom_collector_registry_destroy(PROM_COLLECTOR_REGISTRY_DEFAULT);
     prom_collector_registry_default_init();
 
     // initialize server_info counter
+    prom_counter_destroy(server_info_counter);
     server_info_counter = prom_collector_registry_must_register_metric(prom_counter_new("apache_server_info", "information about the apache version", 1, (const char *[]) { "server_description" }));
     prom_counter_add(server_info_counter, 0, (const char *[]){ap_get_server_description()});
 
     // initialize request counter with known standard http methods
+    prom_counter_destroy(request_counter);
     request_counter = prom_collector_registry_must_register_metric(prom_counter_new("apache_requests_total", "is the total number of http requests", 2, (const char *[]) { "method", "status" }));
     prom_counter_add(request_counter, 0, (const char *[]){"GET", "200"});
     prom_counter_add(request_counter, 0, (const char *[]){"POST", "200"});
     prom_counter_add(request_counter, 0, (const char *[]){"HEAD", "200"});
 
+    prom_histogram_destroy(response_time_histogram);
     response_time_histogram = prom_collector_registry_must_register_metric(
         prom_histogram_new(
           "apache_response_time_seconds",
@@ -73,6 +83,7 @@ static int prometheus_status_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *p
         )
     );
 
+    prom_histogram_destroy(response_size_histogram);
     response_size_histogram = prom_collector_registry_must_register_metric(
         prom_histogram_new(
           "apache_response_size_bytes",
@@ -91,9 +102,8 @@ static void prometheus_status_register_hooks(apr_pool_t *p) {
     ap_hook_handler(prometheus_status_handler, NULL, NULL, APR_HOOK_MIDDLE);
     ap_hook_post_config(prometheus_status_init, NULL, NULL, APR_HOOK_MIDDLE);
     ap_hook_log_transaction(prometheus_status_counter, NULL, NULL, APR_HOOK_MIDDLE);
+    ap_hook_monitor(prometheus_status_monitor, NULL, NULL, APR_HOOK_MIDDLE);
 }
-
-// TODO: handle destroy
 
 /* register mod_prometheus_status within the apache */
 module AP_MODULE_DECLARE_DATA prometheus_status_module = {
