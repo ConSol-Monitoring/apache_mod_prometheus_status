@@ -14,7 +14,11 @@
 #define VERSION 0.0.1
 #define NAME "mod_prometheus_status"
 
-static int server_limit, thread_limit;
+static int server_limit, thread_limit, threads_per_child, max_servers;
+
+#define SERVER_DISABLED SERVER_NUM_STATUS
+#define MOD_STATUS_NUM_STATUS (SERVER_NUM_STATUS+1)
+static int status_flags[MOD_STATUS_NUM_STATUS];
 
 typedef struct {
     char  context[256];
@@ -28,7 +32,7 @@ const char *prometheus_status_set_label(cmd_parms *cmd, void *cfg, const char *a
 static void prometheus_status_register_hooks(apr_pool_t *p);
 void *create_dir_conf(apr_pool_t *pool, char *context);
 void *merge_dir_conf(apr_pool_t *pool, void *BASE, void *ADD);
-static int prometheus_status_monitor(void);
+static int prometheus_status_monitor(request_rec *r);
 
 /* available configuration directives */
 static const command_rec prometheus_status_directives[] = {
@@ -57,6 +61,7 @@ prom_gauge_t *server_mpm_generation_gauge = NULL;
 prom_gauge_t *server_config_generation_gauge = NULL;
 prom_gauge_t *server_cpu_load_gauge = NULL;
 prom_gauge_t *workers_gauge = NULL;
+prom_gauge_t *workers_scoreboard_gauge = NULL;
 prom_histogram_t *response_time_histogram = NULL;
 prom_histogram_t *response_size_histogram = NULL;
 
@@ -88,7 +93,7 @@ static int prometheus_status_handler(request_rec *r) {
 
     if(!r->header_only) {
         // update none-request specific metrics
-        prometheus_status_monitor();
+        prometheus_status_monitor(r);
 
         const char *buf = prom_collector_registry_bridge(PROM_COLLECTOR_REGISTRY_DEFAULT);
         ap_rputs(buf, r);
@@ -114,7 +119,7 @@ static int prometheus_status_counter(request_rec *r) {
 }
 
 /* This hook gets run periodically by a maintenance function inside the MPM. */
-static int prometheus_status_monitor() {
+static int prometheus_status_monitor(request_rec *r) {
     int busy = 0;
     int ready = 0;
     int i, j, res;
@@ -124,6 +129,20 @@ static int prometheus_status_monitor() {
     apr_interval_time_t up_time;
     apr_time_t nowtime;
     ap_loadavg_t cpu;
+    char *stat_buffer;
+
+    status_flags[SERVER_DEAD] = 0;
+    status_flags[SERVER_READY] = 0;
+    status_flags[SERVER_STARTING] = 0;
+    status_flags[SERVER_BUSY_READ] = 0;
+    status_flags[SERVER_BUSY_WRITE] = 0;
+    status_flags[SERVER_BUSY_KEEPALIVE] = 0;
+    status_flags[SERVER_BUSY_LOG] = 0;
+    status_flags[SERVER_BUSY_DNS] = 0;
+    status_flags[SERVER_CLOSING] = 0;
+    status_flags[SERVER_GRACEFUL] = 0;
+    status_flags[SERVER_IDLE_KILL] = 0;
+    status_flags[SERVER_DISABLED] = 0;
 
     ap_mpm_query(AP_MPMQ_GENERATION, &mpm_generation);
 
@@ -145,6 +164,12 @@ static int prometheus_status_monitor() {
             ws_record = ap_get_scoreboard_worker_from_indexes(i, j);
             res = ws_record->status;
 
+            if ((i >= max_servers || j >= threads_per_child)
+                && (res == SERVER_DEAD))
+                status_flags[SERVER_DISABLED]++;
+            else
+                status_flags[res]++;
+
             if(!ps_record->quiescing && ps_record->pid) {
                 if(res == SERVER_READY) {
                     if (ps_record->generation == mpm_generation)
@@ -159,6 +184,18 @@ static int prometheus_status_monitor() {
         }
     }
 
+    prom_gauge_set(workers_scoreboard_gauge, status_flags[SERVER_DEAD], (const char *[]){"open_slot"});
+    prom_gauge_set(workers_scoreboard_gauge, status_flags[SERVER_READY], (const char *[]){"idle"});
+    prom_gauge_set(workers_scoreboard_gauge, status_flags[SERVER_STARTING], (const char *[]){"startup"});
+    prom_gauge_set(workers_scoreboard_gauge, status_flags[SERVER_BUSY_READ], (const char *[]){"read"});
+    prom_gauge_set(workers_scoreboard_gauge, status_flags[SERVER_BUSY_WRITE], (const char *[]){"reply"});
+    prom_gauge_set(workers_scoreboard_gauge, status_flags[SERVER_BUSY_KEEPALIVE], (const char *[]){"keepalive"});
+    prom_gauge_set(workers_scoreboard_gauge, status_flags[SERVER_BUSY_LOG], (const char *[]){"logging"});
+    prom_gauge_set(workers_scoreboard_gauge, status_flags[SERVER_CLOSING], (const char *[]){"closing"});
+    prom_gauge_set(workers_scoreboard_gauge, status_flags[SERVER_GRACEFUL], (const char *[]){"graceful_stop"});
+    prom_gauge_set(workers_scoreboard_gauge, status_flags[SERVER_IDLE_KILL], (const char *[]){"idle_cleanup"});
+    prom_gauge_set(workers_scoreboard_gauge, status_flags[SERVER_DISABLED], (const char *[]){"disabled"});
+
     prom_gauge_set(workers_gauge, ready, (const char *[]){"ready"});
     prom_gauge_set(workers_gauge, busy, (const char *[]){"busy"});
 
@@ -169,6 +206,11 @@ static int prometheus_status_monitor() {
 static int prometheus_status_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *s) {
     ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &thread_limit);
     ap_mpm_query(AP_MPMQ_HARD_LIMIT_DAEMONS, &server_limit);
+    ap_mpm_query(AP_MPMQ_MAX_DAEMONS, &max_servers);
+    ap_mpm_query(AP_MPMQ_MAX_THREADS, &threads_per_child);
+    /* work around buggy MPMs */
+    if (threads_per_child == 0)
+        threads_per_child = 1;
 
     prom_collector_registry_destroy(PROM_COLLECTOR_REGISTRY_DEFAULT);
     prom_collector_registry_default_init();
@@ -207,6 +249,9 @@ static int prometheus_status_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *p
     workers_gauge = prom_collector_registry_must_register_metric(prom_gauge_new("apache_workers", "is the total number of apache workers", 1, (const char *[]) { "state" }));
     prom_gauge_set(workers_gauge, 0, (const char *[]){"ready"});
     prom_gauge_set(workers_gauge, 0, (const char *[]){"busy"});
+
+    prom_counter_destroy(workers_scoreboard_gauge);
+    workers_scoreboard_gauge = prom_collector_registry_must_register_metric(prom_gauge_new("apache_workers_scoreboard", "is the total number of apache workers", 1, (const char *[]) { "state" }));
 
     // initialize request counter with known standard http methods
     prom_counter_destroy(request_counter);
