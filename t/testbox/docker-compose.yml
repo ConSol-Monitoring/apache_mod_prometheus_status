@@ -19,3 +19,6 @@ services:
           - vhost-b.test.local
     hostname: apache
     domainname: test.local
+    # required for strace and gdb
+    cap_add:
+        - SYS_PTRACE

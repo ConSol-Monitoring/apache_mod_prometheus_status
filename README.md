@@ -20,9 +20,15 @@ Compile the module like this:
 
 ```apache
 LoadModule prometheus_status_module .../mod_prometheus_status.so
+PrometheusStatusEnabled On
 
 <Location /metrics>
   SetHandler prometheus-metrics
+</Location>
+
+# optionall set custom label for specific locations
+<Location /test>
+  PrometheusStatusLabel /test
 </Location>
 ```
 
@@ -67,13 +73,11 @@ Cleanup docker machines and test environment by
 
 ## Roadmap
 
-  - [ ] add response time histogram
-  - [ ] add response size histogram
-  - [ ] add per location match label
   - [ ] add optional vhost label
   - [ ] add number of vhosts metric
-  - [ ] add docker based tests
-  - [ ] add test for reloading apache
+  - [ ] add worker/threads metrics
+  - [ ] add memory / cpu metrics
+  - [ ] add example grafana dashboard
 
 ## License
 [MIT](https://choosealicense.com/licenses/mit/)
