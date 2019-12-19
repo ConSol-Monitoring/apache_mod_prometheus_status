@@ -42,6 +42,9 @@ http://your_server_name/metrics
 So far this modules supports the following metrics:
 
   * server_info
+  * server_uptime
+  * server worker totals
+  * server mpm/configuration generation
   * requests total number
   * request response size histogram
   * request response size histogram

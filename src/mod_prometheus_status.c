@@ -4,14 +4,17 @@
 
 #include "prom.h"
 #include "httpd.h"
-#include "mpm_common.h"
 #include "http_log.h"
+#include "http_core.h"
 #include "http_config.h"
 #include "http_protocol.h"
+#include "mpm_common.h"
 #include "ap_config.h"
 
 #define VERSION 0.0.1
 #define NAME "mod_prometheus_status"
+
+static int server_limit, thread_limit;
 
 typedef struct {
     char  context[256];
@@ -25,6 +28,7 @@ const char *prometheus_status_set_label(cmd_parms *cmd, void *cfg, const char *a
 static void prometheus_status_register_hooks(apr_pool_t *p);
 void *create_dir_conf(apr_pool_t *pool, char *context);
 void *merge_dir_conf(apr_pool_t *pool, void *BASE, void *ADD);
+static int prometheus_status_monitor(void);
 
 /* available configuration directives */
 static const command_rec prometheus_status_directives[] = {
@@ -46,7 +50,12 @@ module AP_MODULE_DECLARE_DATA prometheus_status_module = {
 
 /* list of global counter */
 prom_counter_t *server_info_counter = NULL;
+prom_counter_t *server_name_counter = NULL;
 prom_counter_t *request_counter = NULL;
+prom_gauge_t *server_uptime_gauge = NULL;
+prom_gauge_t *server_mpm_generation_gauge = NULL;
+prom_gauge_t *server_config_generation_gauge = NULL;
+prom_gauge_t *workers_gauge = NULL;
 prom_histogram_t *response_time_histogram = NULL;
 prom_histogram_t *response_size_histogram = NULL;
 
@@ -77,6 +86,9 @@ static int prometheus_status_handler(request_rec *r) {
     ap_set_content_type(r, "text/plain");
 
     if(!r->header_only) {
+        // update none-request specific metrics
+        prometheus_status_monitor();
+
         const char *buf = prom_collector_registry_bridge(PROM_COLLECTOR_REGISTRY_DEFAULT);
         ap_rputs(buf, r);
     }
@@ -101,13 +113,58 @@ static int prometheus_status_counter(request_rec *r) {
 }
 
 /* This hook gets run periodically by a maintenance function inside the MPM. */
-static int prometheus_status_monitor(apr_pool_t *p, server_rec *s)
-{
+static int prometheus_status_monitor() {
+    int busy = 0;
+    int ready = 0;
+    int i, j, res;
+    worker_score *ws_record;
+    process_score *ps_record;
+    ap_generation_t mpm_generation;
+    apr_interval_time_t up_time;
+    apr_time_t nowtime;
+
+    ap_mpm_query(AP_MPMQ_GENERATION, &mpm_generation);
+
+    nowtime = apr_time_now();
+    up_time = (apr_uint32_t) apr_time_sec(nowtime - ap_scoreboard_image->global->restart_time);
+    prom_gauge_set(server_uptime_gauge, up_time, NULL);
+
+    prom_gauge_set(server_mpm_generation_gauge, mpm_generation, NULL);
+    prom_gauge_set(server_config_generation_gauge, ap_state_query(AP_SQ_CONFIG_GEN), NULL);
+
+    for(i = 0; i < server_limit; ++i) {
+        ps_record = ap_get_scoreboard_process(i);
+        for(j = 0; j < thread_limit; ++j) {
+            int indx = (i * thread_limit) + j;
+
+            ws_record = ap_get_scoreboard_worker_from_indexes(i, j);
+            res = ws_record->status;
+
+            if(!ps_record->quiescing && ps_record->pid) {
+                if(res == SERVER_READY) {
+                    if (ps_record->generation == mpm_generation)
+                        ready++;
+                }
+                else if (res != SERVER_DEAD &&
+                         res != SERVER_STARTING &&
+                         res != SERVER_IDLE_KILL) {
+                    busy++;
+                }
+            }
+        }
+    }
+
+    prom_gauge_set(workers_gauge, ready, (const char *[]){"ready"});
+    prom_gauge_set(workers_gauge, busy, (const char *[]){"busy"});
+
     return OK;
 }
 
 /* prometheus_status_init registers and initializes all counter */
 static int prometheus_status_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *s) {
+    ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &thread_limit);
+    ap_mpm_query(AP_MPMQ_HARD_LIMIT_DAEMONS, &server_limit);
+
     prom_collector_registry_destroy(PROM_COLLECTOR_REGISTRY_DEFAULT);
     prom_collector_registry_default_init();
 
@@ -115,6 +172,31 @@ static int prometheus_status_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *p
     prom_counter_destroy(server_info_counter);
     server_info_counter = prom_collector_registry_must_register_metric(prom_counter_new("apache_server_info", "information about the apache version", 1, (const char *[]) { "server_description" }));
     prom_counter_add(server_info_counter, 0, (const char *[]){ap_get_server_description()});
+
+    // initialize server_name counter
+    prom_counter_destroy(server_name_counter);
+    server_name_counter = prom_collector_registry_must_register_metric(prom_counter_new("apache_server_name", "contains the server name", 1, (const char *[]) { "server_name" }));
+    prom_counter_add(server_name_counter, 0, (const char *[]){s->server_hostname});
+
+    // initialize server_uptime counter
+    prom_gauge_destroy(server_uptime_gauge);
+    server_uptime_gauge = prom_collector_registry_must_register_metric(prom_gauge_new("apache_server_uptime_seconds", "server uptime in seconds", 0, NULL));
+    prom_gauge_set(server_uptime_gauge, 0, NULL);
+
+    // initialize server_config_generation_gauge
+    prom_gauge_destroy(server_config_generation_gauge);
+    server_config_generation_gauge = prom_collector_registry_must_register_metric(prom_gauge_new("apache_server_config_generation", "current config generation", 0, NULL));
+    prom_gauge_set(server_config_generation_gauge, 0, NULL);
+
+    // initialize server_mpm_generation_gauge
+    prom_gauge_destroy(server_mpm_generation_gauge);
+    server_mpm_generation_gauge = prom_collector_registry_must_register_metric(prom_gauge_new("apache_server_mpm_generation", "current mpm generation", 0, NULL));
+    prom_gauge_set(server_mpm_generation_gauge, 0, NULL);
+
+    prom_counter_destroy(workers_gauge);
+    workers_gauge = prom_collector_registry_must_register_metric(prom_gauge_new("apache_workers", "is the total number of apache workers", 1, (const char *[]) { "state" }));
+    prom_gauge_set(workers_gauge, 0, (const char *[]){"ready"});
+    prom_gauge_set(workers_gauge, 0, (const char *[]){"busy"});
 
     // initialize request counter with known standard http methods
     prom_counter_destroy(request_counter);
@@ -153,7 +235,6 @@ static void prometheus_status_register_hooks(apr_pool_t *p) {
     ap_hook_handler(prometheus_status_handler, NULL, NULL, APR_HOOK_MIDDLE);
     ap_hook_post_config(prometheus_status_init, NULL, NULL, APR_HOOK_MIDDLE);
     ap_hook_log_transaction(prometheus_status_counter, NULL, NULL, APR_HOOK_MIDDLE);
-    ap_hook_monitor(prometheus_status_monitor, NULL, NULL, APR_HOOK_MIDDLE);
 }
 
 /* Function for creating new configurations for per-directory contexts */
