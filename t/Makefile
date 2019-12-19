@@ -1,7 +1,7 @@
 .PHONY: testbox
 
 testbox:
-	$(MAKE) -C testbox clean update prepare
+	$(MAKE) -C testbox prepare; \
 
 test:
 	$(MAKE) -C testbox test

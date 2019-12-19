@@ -41,14 +41,28 @@ http://your_server_name/metrics
 
 So far this modules supports the following metrics:
 
-  * server_info
-  * server_uptime
-  * server worker totals
-  * server mpm/configuration generation
-  * requests total number
-  * request response size histogram
-  * request response size histogram
-
+```
+  # HELP apache_server_info information about the apache version
+  # TYPE apache_server_info counter
+  # HELP apache_server_name contains the server name
+  # TYPE apache_server_name counter
+  # HELP apache_server_uptime_seconds server uptime in seconds
+  # TYPE apache_server_uptime_seconds gauge
+  # HELP apache_server_config_generation current config generation
+  # TYPE apache_server_config_generation gauge
+  # HELP apache_server_mpm_generation current mpm generation
+  # TYPE apache_server_mpm_generation gauge
+  # HELP apache_cpu_load CPU Load 1
+  # TYPE apache_cpu_load gauge
+  # HELP apache_workers is the total number of apache workers
+  # TYPE apache_workers gauge
+  # HELP apache_requests_total is the total number of http requests
+  # TYPE apache_requests_total counter
+  # HELP apache_response_time_seconds response time histogram
+  # TYPE apache_response_time_seconds histogram
+  # HELP apache_response_size_bytes response size histogram
+  # TYPE apache_response_size_bytes histogram
+```
 
 ## Contributing
 Pull requests are welcome. For major changes, please open an issue first to discuss

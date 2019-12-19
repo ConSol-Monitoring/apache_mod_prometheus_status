@@ -38,6 +38,17 @@ test:
 testbox:
 	$(MAKE) -C t testbox
 
+update_readme_available_metrics: testbox
+	echo '```' > metrics.txt
+	curl -qs http://localhost:3000/metrics | grep ^# | grep apache >> metrics.txt
+	sed -e 's/^#/  #/' -i metrics.txt
+	echo '```' >> metrics.txt
+	sed -e '/^\ *\# \(HELP\|TYPE\)/d' -i README.md
+	sed -zE 's/```\n```/###METRICS###/' -i README.md
+	sed -e '/###METRICS###/r metrics.txt' -i README.md
+	sed -e '/###METRICS###/d' -i README.md
+	rm metrics.txt
+
 mod_prometheus_status.so: src/mod_prometheus_status.c $(DEPENDENCIES)
 	$(APXS) -c -n $@ $(INCLUDES) $(LIBS) $(SRC)
 	install src/.libs/mod_prometheus_status.so mod_prometheus_status.so
