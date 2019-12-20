@@ -19,6 +19,7 @@ static int server_limit, thread_limit, threads_per_child, max_servers;
 #define SERVER_DISABLED SERVER_NUM_STATUS
 #define MOD_STATUS_NUM_STATUS (SERVER_NUM_STATUS+1)
 static int status_flags[MOD_STATUS_NUM_STATUS];
+#define PROMETHEUS_STATUS_DEFAUL_LOGLEVEL APLOG_DEBUG
 
 typedef struct {
     char  context[256];
@@ -86,9 +87,9 @@ const char *prometheus_status_set_label(cmd_parms *cmd, void *cfg, const char *a
 
 /* prometheus_status_handler responds to /metrics requests */
 static int prometheus_status_handler(request_rec *r) {
-    //ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, "prometheus_status_handler: %s", r->handler);
     if(!r->handler || strcmp(r->handler, "prometheus-metrics")) return(DECLINED);
 
+    ap_log_rerror(APLOG_MARK, PROMETHEUS_STATUS_DEFAUL_LOGLEVEL, 0, r, "[%d] prometheus_status_handler: %s", getpid(), r->handler);
     ap_set_content_type(r, "text/plain");
 
     if(!r->header_only) {
@@ -103,7 +104,7 @@ static int prometheus_status_handler(request_rec *r) {
 
 /* prometheus_status_counter is called on each request to update counter */
 static int prometheus_status_counter(request_rec *r) {
-    //ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, "prometheus_status_counter");
+    ap_log_rerror(APLOG_MARK, PROMETHEUS_STATUS_DEFAUL_LOGLEVEL, 0, r, "[%d] prometheus_status_counter", getpid());
     char status[4];
     apr_time_t now = apr_time_now();
     apr_time_t duration = now - r->request_time;
@@ -204,6 +205,7 @@ static int prometheus_status_monitor(request_rec *r) {
 
 /* prometheus_status_init registers and initializes all counter */
 static int prometheus_status_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *s) {
+    ap_log_error(APLOG_MARK, PROMETHEUS_STATUS_DEFAUL_LOGLEVEL, 0, s, "[%d] prometheus_status_init", getpid());
     ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &thread_limit);
     ap_mpm_query(AP_MPMQ_HARD_LIMIT_DAEMONS, &server_limit);
     ap_mpm_query(AP_MPMQ_MAX_DAEMONS, &max_servers);
