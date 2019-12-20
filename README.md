@@ -56,6 +56,8 @@ So far this modules supports the following metrics:
   # TYPE apache_cpu_load gauge
   # HELP apache_workers is the total number of apache workers
   # TYPE apache_workers gauge
+  # HELP apache_workers_scoreboard is the total number of apache workers
+  # TYPE apache_workers_scoreboard gauge
   # HELP apache_requests_total is the total number of http requests
   # TYPE apache_requests_total counter
   # HELP apache_response_time_seconds response time histogram
