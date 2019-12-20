@@ -2,6 +2,14 @@
 
 mod_prometheus_status is a [Prometheus](https://prometheus.io/) white box exporter for [Apache](https://httpd.apache.org/) metrics similar to mod_status.
 
+---
+**NOTE**
+
+This is just a POC and it does not work as expected so far. It works, except the numbers are wrong, because apache is a multi-process daemon and prometheus metrics are per-process.
+Use https://github.com/Lusitaniae/apache_exporter instead.
+
+---
+
 ## Requirements
 
   - gcc compiler to build (4.9 or newer)
