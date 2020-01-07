@@ -27,6 +27,12 @@ typedef struct {
     char  label[256]; /* Add custom label */
 } prometheus_status_config;
 
+struct ap_sb_handle_t
+{
+  int child_num;
+  int thread_num;
+};
+
 /* setup prototypes */
 const char *prometheus_status_set_enabled(cmd_parms *cmd, void *cfg, const char *arg);
 const char *prometheus_status_set_label(cmd_parms *cmd, void *cfg, const char *arg);
@@ -114,6 +120,10 @@ static int prometheus_status_counter(request_rec *r) {
     snprintf(status, 4, "%d", r->status);
     prom_counter_inc(request_counter, (const char *[]){r->method, status, config->label});
 
+    if(r->connection->sbh) {
+        ap_sb_handle_t * sbh = r->connection->sbh;
+        ap_log_rerror(APLOG_MARK, PROMETHEUS_STATUS_DEFAUL_LOGLEVEL, 0, r, "[%d] prometheus_status_counter, child: %d", getpid(), sbh->child_num);
+    }
     prom_histogram_observe(response_time_histogram, (long)duration/(double)APR_USEC_PER_SEC, (const char *[]){config->label});
     prom_histogram_observe(response_size_histogram, (double)r->bytes_sent, (const char *[]){config->label});
     return OK;
