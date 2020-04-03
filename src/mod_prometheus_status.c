@@ -19,7 +19,7 @@ static int server_limit, thread_limit, threads_per_child, max_servers;
 #define SERVER_DISABLED SERVER_NUM_STATUS
 #define MOD_STATUS_NUM_STATUS (SERVER_NUM_STATUS+1)
 static int status_flags[MOD_STATUS_NUM_STATUS];
-#define PROMETHEUS_STATUS_DEFAULT_LOGLEVEL APLOG_DEBUG
+#define PROMETHEUS_STATUS_DEFAULT_LOGLEVEL APLOG_DEBUG // ex.: APLOG_DEBUG or APLOG_ERR
 
 typedef struct {
     char  context[256];
@@ -105,6 +105,7 @@ static int prometheus_status_handler(request_rec *r) {
         const char *buf = prom_collector_registry_bridge(PROM_COLLECTOR_REGISTRY_DEFAULT);
         ap_rputs(buf, r);
     }
+
     return OK;
 }
 
@@ -126,6 +127,7 @@ static int prometheus_status_counter(request_rec *r) {
     }
     prom_histogram_observe(response_time_histogram, (long)duration/(double)APR_USEC_PER_SEC, (const char *[]){config->label});
     prom_histogram_observe(response_size_histogram, (double)r->bytes_sent, (const char *[]){config->label});
+
     return OK;
 }
 
@@ -141,6 +143,8 @@ static int prometheus_status_monitor(request_rec *r) {
     apr_time_t nowtime;
     ap_loadavg_t cpu;
     char *stat_buffer;
+
+    ap_log_rerror(APLOG_MARK, PROMETHEUS_STATUS_DEFAULT_LOGLEVEL, 0, r, "[%d] prometheus_status_monitor", getpid());
 
     status_flags[SERVER_DEAD] = 0;
     status_flags[SERVER_READY] = 0;
@@ -220,6 +224,7 @@ static int prometheus_status_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *p
     ap_mpm_query(AP_MPMQ_HARD_LIMIT_DAEMONS, &server_limit);
     ap_mpm_query(AP_MPMQ_MAX_DAEMONS, &max_servers);
     ap_mpm_query(AP_MPMQ_MAX_THREADS, &threads_per_child);
+
     /* work around buggy MPMs */
     if (threads_per_child == 0)
         threads_per_child = 1;
