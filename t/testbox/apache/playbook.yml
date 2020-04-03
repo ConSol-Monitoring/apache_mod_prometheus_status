@@ -12,11 +12,7 @@
         - gdb
         - strace
         - inotify-tools
-        - centos-release-scl
-      state: present
-  - yum:
-      name:
-        - devtoolset-3-gcc
+        - redhat-rpm-config
       state: present
 
 # apache site
@@ -75,8 +71,6 @@
     file:
       src: /src/t/testbox/apache/prometheus.yml
       dest: /omd/sites/dashboard/etc/prometheus/prometheus.d/scrape_configs/static/01-apache.yml
-      owner: dashboard
-      group: dashboard
       state: link
   - name: set default user for grafana
     lineinfile:

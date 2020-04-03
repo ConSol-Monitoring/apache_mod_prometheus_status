@@ -5,9 +5,6 @@ if [ "x$OMD_SITE" != "xdemo" ]; then
   exit 3
 fi
 
-# build requires at least gcc 4.9
-export PATH=/opt/rh/devtoolset-3/root/usr/bin/:$PATH
-
 echo -n "building... "
 mkdir -p var/tmp/build
 rsync -av /src/. var/tmp/build/.
