@@ -12,7 +12,7 @@ function finish {
 trap finish EXIT
 
 # keep watching for changes
-while inotifywait -q -e close_write /src/src/mod_prometheus_status.c; do
+while inotifywait -q -e close_write /src/src/*.c /src/cmd/mod_prometheus_status/*.go; do
   sleep 1
   /src/t/testbox/apache/build.sh
 done

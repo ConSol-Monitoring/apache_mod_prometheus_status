@@ -2,18 +2,11 @@
 
 mod_prometheus_status is a [Prometheus](https://prometheus.io/) white box exporter for [Apache](https://httpd.apache.org/) metrics similar to mod_status.
 
----
-**NOTE**
-
-This is just a POC and it does not work as expected so far. It works, except the numbers are wrong, because apache is a multi-process daemon and prometheus metrics are per-process.
-Use https://github.com/Lusitaniae/apache_exporter instead.
-
----
-
 ## Requirements
 
   - gcc compiler to build (4.9 or newer)
     - apache header files
+  - golang >= 1.12
   - docker/docker-compose for running tests
 
 ## Installation
@@ -23,6 +16,8 @@ Compile the module like this:
 ```bash
   make
 ```
+
+copy *BOTH* .so files to the apache module dir.
 
 ## Configuration
 
@@ -36,7 +31,7 @@ PrometheusStatusEnabled On
 
 # optionall set custom label for specific locations
 <Location /test>
-  PrometheusStatusLabel /test
+  PrometheusStatusLabel application1
 </Location>
 ```
 
@@ -50,28 +45,28 @@ http://your_server_name/metrics
 So far this modules supports the following metrics:
 
 ```
-  # HELP apache_server_info information about the apache version
-  # TYPE apache_server_info counter
-  # HELP apache_server_name contains the server name
-  # TYPE apache_server_name counter
-  # HELP apache_server_uptime_seconds server uptime in seconds
-  # TYPE apache_server_uptime_seconds gauge
-  # HELP apache_server_config_generation current config generation
-  # TYPE apache_server_config_generation gauge
-  # HELP apache_server_mpm_generation current mpm generation
-  # TYPE apache_server_mpm_generation gauge
   # HELP apache_cpu_load CPU Load 1
   # TYPE apache_cpu_load gauge
-  # HELP apache_workers is the total number of apache workers
-  # TYPE apache_workers gauge
-  # HELP apache_workers_scoreboard is the total number of apache workers
-  # TYPE apache_workers_scoreboard gauge
-  # HELP apache_requests_total is the total number of http requests
   # TYPE apache_requests_total counter
-  # HELP apache_response_time_seconds response time histogram
-  # TYPE apache_response_time_seconds histogram
-  # HELP apache_response_size_bytes response size histogram
+  # HELP apache_requests_total is the total number of http requests
   # TYPE apache_response_size_bytes histogram
+  # HELP apache_response_size_bytes response size histogram
+  # TYPE apache_response_time_seconds histogram
+  # HELP apache_response_time_seconds response time histogram
+  # HELP apache_server_config_generation current config generation
+  # TYPE apache_server_config_generation gauge
+  # TYPE apache_server_info counter
+  # HELP apache_server_info information about the apache version
+  # HELP apache_server_mpm_generation current mpm generation
+  # TYPE apache_server_mpm_generation gauge
+  # HELP apache_server_name contains the server name
+  # TYPE apache_server_name counter
+  # TYPE apache_server_uptime_seconds gauge
+  # HELP apache_server_uptime_seconds server uptime in seconds
+  # TYPE apache_workers gauge
+  # HELP apache_workers is the total number of apache workers
+  # TYPE apache_workers_scoreboard gauge
+  # HELP apache_workers_scoreboard is the total number of workers from the scoreboard
 ```
 
 ## Contributing
@@ -112,8 +107,7 @@ Cleanup docker machines and test environment by
 
   - [ ] add optional vhost label
   - [ ] add number of vhosts metric
-  - [ ] add worker/threads metrics
-  - [ ] add memory / cpu metrics
+  - [ ] add memory metrics
   - [ ] add example grafana dashboard
 
 ## License

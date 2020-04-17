@@ -13,6 +13,7 @@
         - strace
         - inotify-tools
         - redhat-rpm-config
+        - golang
       state: present
 
 # apache site

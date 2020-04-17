@@ -1,0 +1,51 @@
+linters-settings:
+  gocyclo:
+    min-complexity: 15
+  goconst:
+    min-len: 8
+    min-occurrences: 12
+  lll:
+    line-length: 120
+  gocritic:
+    enabled-tags:
+      - performance
+      - style
+      - experimental
+    disabled-checks:
+      - emptyFallthrough
+      - paramTypeCombine
+      - unnamedResult
+      - exitAfterDefer
+    settings:
+      rangeValCopy:
+        sizeThreshold: 32
+  funlen:
+    lines: 150
+    statements: 120
+  gocognit:
+    min-complexity: 35
+linters:
+  enable-all: true
+  disable:
+    - maligned
+    - nakedret
+    - gochecknoglobals
+    - errcheck
+    - lll
+    - gochecknoinits
+    - dupl
+    - goconst
+    - interfacer
+    - wsl
+  fast: false
+issues:
+  max-same-issues: 0
+  exclude-use-default: true
+  exclude:
+    - "`noCopy` is unused"
+    - 'Magic number: 1\D '
+  exclude-rules:
+    # Exclude some linters from running on tests files.
+    - path: _test\.go
+      linters:
+        - gomnd

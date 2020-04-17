@@ -1,36 +1,34 @@
 # Makefile for mod_prometheus_status.c
 
-VERSION=$(shell grep "define VERSION" src/mod_prometheus_status.c | cut -d " " -f 3)
-NAME=$(shell grep "define NAME" src/mod_prometheus_status.c | cut -d " " -f 3 | tr -d '"')
-
-DISTFILE=$(NAME)-$(VERSION).tar.gz
 APXS=./apxs.sh
-DEPENDENCIES=vendor/prometheus-client-c
-INCLUDES=-Ivendor/prometheus-client-c/prom/include
-SRC=src/mod_prometheus_status.c\
-	vendor/prometheus-client-c/prom/src/*.c \
+WRAPPER_SOURCE=src/mod_prometheus_status.c
+GO_SRC_DIR=cmd/mod_prometheus_status
+GO_SOURCES=\
+		$(GO_SRC_DIR)/dump.go\
+		$(GO_SRC_DIR)/logger.go\
+		$(GO_SRC_DIR)/prometheus.go\
+		$(GO_SRC_DIR)/module.go
 
-DISTFILES=$(SRC) $(APXS) \
-		  README.md LICENSE Makefile
+MINGOVERSION:=00010012
+MINGOVERSIONSTR:=1.12
+
+VERSION=$(shell grep "define VERSION" $(WRAPPER_SOURCE) | cut -d " " -f 3)
+NAME=$(shell grep "define NAME" $(WRAPPER_SOURCE) | cut -d " " -f 3 | tr -d '"')
+
+
+.PHONY: vendor
 
 all: build
 
 build: mod_prometheus_status.so
 
 install: mod_prometheus_status.so
-	#$(APXS) -i -S LIBEXECDIR=$(DESTDIR)$$($(APXS) -q LIBEXECDIR)/ -n mod_prometheus_status.so mod_prometheus_status.la
 	@echo "make install is not supported, simply copy mod_prometheus_status.so to your apache folder"
 	@echo "and add a LoadModule configuration. See the README for an example configuration."
 
 clean:
-	rm -rf $(DISTFILE) *.so src/.libs/ src/*.la src/*.lo src/*.slo
+	rm -rf *.so src/.libs/ src/*.la src/*.lo src/*.slo
 	-$(MAKE) -C t clean
-
-dist: $(DISTFILE)
-
-$(DISTFILE): $(DEPENDENCIES)
-	tar cfz $(DISTFILE) $(DISTFILES)
-	@echo "$(DISTFILE) created"
 
 test:
 	$(MAKE) -C t test
@@ -40,7 +38,7 @@ testbox:
 
 update_readme_available_metrics: testbox
 	echo '```' > metrics.txt
-	curl -qs http://localhost:3000/metrics | grep ^# | grep apache >> metrics.txt
+	curl -qs http://localhost:3000/metrics | grep ^# | grep apache | sort -k 3 >> metrics.txt
 	sed -e 's/^#/  #/' -i metrics.txt
 	echo '```' >> metrics.txt
 	sed -e '/^\ *\# \(HELP\|TYPE\)/d' -i README.md
@@ -49,14 +47,45 @@ update_readme_available_metrics: testbox
 	sed -e '/###METRICS###/d' -i README.md
 	rm metrics.txt
 
-mod_prometheus_status.so: src/mod_prometheus_status.c $(DEPENDENCIES)
-	$(APXS) -c -n $@ $(INCLUDES) $(LIBS) $(SRC)
+updatedeps: versioncheck
+	go list -u -m all
+	go mod tidy
+
+vendor:
+	go mod vendor
+
+versioncheck:
+	@[ $$( printf '%s\n' $(GOVERSION) $(MINGOVERSION) | sort | head -n 1 ) = $(MINGOVERSION) ] || { \
+		echo "**** ERROR:"; \
+		echo "**** build requires at least golang version $(MINGOVERSIONSTR) or higher"; \
+		echo "**** this is: $$(go version)"; \
+		exit 1; \
+	}
+
+dump:
+	if [ $(shell grep -rc Dump $(GO_SRC_DIR)/*.go | grep -v :0 | grep -v dump.go | wc -l) -ne 0 ]; then \
+		sed -i.bak 's/\/\/ +build.*/\/\/ build with debug functions/' $(GO_SRC_DIR)/dump.go; \
+	else \
+		sed -i.bak 's/\/\/ build.*/\/\/ +build ignore/' $(GO_SRC_DIR)/dump.go; \
+	fi
+	rm -f $(GO_SRC_DIR)/dump.go.bak
+
+fmt: tools
+	cd $(GO_SRC_DIR) && goimports -w .
+	cd $(GO_SRC_DIR) && go vet -all -assign -atomic -bool -composites -copylocks -nilfunc -rangeloops -unsafeptr -unreachable .
+	cd $(GO_SRC_DIR) && gofmt -w -s .
+
+tools: versioncheck dump
+	go mod download
+	set -e; for DEP in $(shell grep _ buildtools/tools.go | awk '{ print $$2 }'); do \
+		go get $$DEP; \
+	done
+	go mod tidy
+
+mod_prometheus_status.so: mod_prometheus_status_go.so $(WRAPPER_SOURCE)
+	$(APXS) -c -n $@ -I. $(LIBS) $(WRAPPER_SOURCE)
 	install src/.libs/mod_prometheus_status.so mod_prometheus_status.so
 
-dependencies: $(DEPENDENCIES)
-
-vendor/prometheus-client-c:
-	mkdir -p vendor/prometheus-client-c
-	cd vendor && git clone https://github.com/digitalocean/prometheus-client-c tmpclone
-	cd vendor && mv tmpclone/prom prometheus-client-c/
-	rm -rf vendor/tmpclone
+mod_prometheus_status_go.so: $(GO_SOURCES) dump
+	go build -buildmode=c-shared -x -ldflags "-X main.Build=$(shell git rev-parse --short HEAD)" -o mod_prometheus_status_go.so $(GO_SOURCES)
+	chmod 755 mod_prometheus_status_go.so

@@ -5,9 +5,12 @@ if [ "x$OMD_SITE" != "xdemo" ]; then
   exit 3
 fi
 
-echo -n "building... "
+echo "building... "
 mkdir -p var/tmp/build
 rsync -av /src/. var/tmp/build/.
-cd var/tmp/build && make clean build
-omd restart apache
+cd var/tmp/build && \
+    make build && \
+    echo "build OK" && \
+    sleep 1 && \
+    omd restart apache > /dev/null
 echo "done."
