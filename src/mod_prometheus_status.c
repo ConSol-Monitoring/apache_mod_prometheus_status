@@ -208,6 +208,12 @@ static int prometheus_status_handler(request_rec *r) {
     int nbytes;
     char buffer[4096];
 
+    // is the module enabled at all?
+    prometheus_status_config *config = (prometheus_status_config*) ap_get_module_config(r->per_dir_config, &prometheus_status_module);
+    if(config->enabled == 0) {
+        return(OK);
+    }
+
     if(!r->handler || strcmp(r->handler, "prometheus-metrics")) return(DECLINED);
     if(r->header_only) {
         return(OK);
@@ -237,7 +243,11 @@ static int prometheus_status_counter(request_rec *r) {
     apr_time_t now = apr_time_now();
     apr_time_t duration = now - r->request_time;
 
+    // is the module enabled at all?
     prometheus_status_config *config = (prometheus_status_config*) ap_get_module_config(r->per_dir_config, &prometheus_status_module);
+    if(config->enabled == 0) {
+        return(OK);
+    }
 
     prometheus_status_send_communication_socket("update:promRequests;1;%s;%d;%s\n", r->method, r->status, config->label);
     prometheus_status_send_communication_socket("update:promResponseTime;%f;%s\n", (long)duration/(double)APR_USEC_PER_SEC, config->label);
@@ -268,6 +278,12 @@ static int prometheus_status_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *p
 
     /* cache main server */
     main_server = s;
+
+    // is the module enabled at all?
+    prometheus_status_config *config = (prometheus_status_config*) ap_get_module_config(s->module_config, &prometheus_status_module);
+    if(config->enabled == 0) {
+        return(OK);
+    }
 
     log("prometheus_status_init version %s", VERSION);
 
