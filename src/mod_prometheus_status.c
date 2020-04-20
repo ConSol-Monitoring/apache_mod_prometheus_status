@@ -2,29 +2,23 @@
 **  mod_prometheus_status.c -- Apache sample prometheus_status module
 */
 
-#include "ap_config.h"
-#include "apr_strings.h"
-#include "httpd.h"
-#include "http_core.h"
-#include "http_log.h"
-#include "http_config.h"
-#include "http_protocol.h"
-#include "mpm_common.h"
-#include <unistd.h>
-#include <dlfcn.h>
-
+#include "mod_prometheus_status.h"
 #include "mod_prometheus_status_go.h"
 
-#define VERSION "0.0.1"
-#define NAME "mod_prometheus_status"
+extern apr_hash_t *log_hash;
+
+#define SERVER_DISABLED SERVER_NUM_STATUS
+#define MOD_STATUS_NUM_STATUS (SERVER_NUM_STATUS+1)
+static int status_flags[MOD_STATUS_NUM_STATUS];
+static int server_limit, thread_limit, threads_per_child, max_servers;
 
 typedef struct {
-    char         context[4096];
-    int          enabled;            /* Enable or disable our module */
-    const char  *label_names;        /* Set custom label names */
-    char         label_values[4096]; /* Add custom label values */
+    char                context[4096];
+    int                 enabled;            /* Enable or disable our module */
+    const char         *label_names;        /* Set custom label names */
+    char                label_values[4096]; /* Add custom label values */
+    apr_array_header_t *label_format;       /* parsed label format */
 } prometheus_status_config;
-
 static prometheus_status_config config;
 
 /* Server object for main server as supplied to prometheus_status_init(). */
@@ -34,18 +28,6 @@ char* (*prometheusStatusInitFn)() = NULL;
 char *metric_socket = NULL;
 int metric_socket_fd = 0;
 
-#define SERVER_DISABLED SERVER_NUM_STATUS
-#define MOD_STATUS_NUM_STATUS (SERVER_NUM_STATUS+1)
-static int status_flags[MOD_STATUS_NUM_STATUS];
-static int server_limit, thread_limit, threads_per_child, max_servers;
-
-module AP_MODULE_DECLARE_DATA prometheus_status_module;
-
-/* global logger */
-#define log(_fmt, ...) if(main_server != NULL) {\
-    ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, main_server, \
-    "[%s][%s:%d] "_fmt, NAME, __FILE__, __LINE__, ## __VA_ARGS__); }
-
 /* Handler for the "PrometheusStatusEnabled" directive */
 const char *prometheus_status_set_enabled(cmd_parms *cmd, void *cfg, int val) {
     prometheus_status_config *conf = (prometheus_status_config *) cfg;
@@ -54,16 +36,18 @@ const char *prometheus_status_set_enabled(cmd_parms *cmd, void *cfg, int val) {
 }
 
 /* Handler for the "PrometheusStatusLabelNames" directive */
-const char *prometheus_status_set_label_names(cmd_parms *cmd, void *cfg, const char *arg) {
-    config.label_names = arg;
+static const char *prometheus_status_set_label_names(cmd_parms *cmd, void *cfg, const char *arg) {
+    config.label_names  = arg;
     return NULL;
 }
 
 /* Handler for the "PrometheusStatusLabelValues" directive */
 const char *prometheus_status_set_label_values(cmd_parms *cmd, void *cfg, const char *arg) {
+    const char *err_string = NULL;
     prometheus_status_config *conf = (prometheus_status_config *) cfg;
     strcpy(conf->label_values, arg);
-    return NULL;
+    conf->label_format = parse_log_string(cmd->pool, conf->label_values, &err_string);
+    return err_string;
 }
 
 /* open the communication socket */
@@ -255,9 +239,13 @@ static int prometheus_status_counter(request_rec *r) {
         return(OK);
     }
 
-    prometheus_status_send_communication_socket("request:promRequests;1;%s\n", cfg->label_values);
-    prometheus_status_send_communication_socket("request:promResponseTime;%f;%s\n", (long)duration/(double)APR_USEC_PER_SEC, cfg->label_values);
-    prometheus_status_send_communication_socket("request:promResponseSize;%d;%s\n", (int)r->bytes_sent, cfg->label_values);
+    const char *label = NULL;
+    apr_array_header_t *format = cfg->label_format != NULL ? cfg->label_format : config.label_format;
+    prometheus_status_expand_variables(format, r, &label);
+
+    prometheus_status_send_communication_socket("request:promRequests;1;%s\n", label);
+    prometheus_status_send_communication_socket("request:promResponseTime;%f;%s\n", (long)duration/(double)APR_USEC_PER_SEC, label);
+    prometheus_status_send_communication_socket("request:promResponseSize;%d;%s\n", (int)r->bytes_sent, label);
     prometheus_status_close_communication_socket();
     return(OK);
 }
@@ -326,9 +314,18 @@ static int prometheus_status_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *p
 /* prometheus_status_register_hooks registers all required hooks */
 static void prometheus_status_register_hooks(apr_pool_t *p) {
     log("prometheus_status_register_hooks: %s\n", __FILE__);
+    const char *err_string = NULL;
     // set defaults
     config.label_names  = "method;status";
-    strcpy(config.label_values, "%{REQUEST_METHOD};%{RESPONSE_CODE}");
+    strcpy(config.label_values, "%m;%s");
+
+    log_hash = apr_hash_make(p);
+    prometheus_status_register_all_log_handler(p);
+    config.label_format = parse_log_string(p, config.label_values, &err_string);
+    if(err_string != NULL) {
+        log("failed to parse label values: %s\n", err_string);
+        exit(1);
+    }
 
     ap_hook_handler(prometheus_status_handler, NULL, NULL, APR_HOOK_MIDDLE);
     ap_hook_post_config(prometheus_status_init, NULL, NULL, APR_HOOK_MIDDLE);
@@ -357,6 +354,7 @@ void *prometheus_status_merge_dir_conf(apr_pool_t *pool, void *BASE, void *ADD) 
 
     conf->enabled = (add->enabled != -1) ? add->enabled : base->enabled;
     strcpy(conf->label_values, strlen(add->label_values) ? add->label_values : base->label_values);
+    conf->label_format = add->label_format != NULL ? add->label_format : base->label_format;
     return conf;
 }
 

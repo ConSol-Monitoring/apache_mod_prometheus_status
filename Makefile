@@ -1,7 +1,7 @@
 # Makefile for mod_prometheus_status.c
 
 APXS=./apxs.sh
-WRAPPER_SOURCE=src/mod_prometheus_status.c
+WRAPPER_SOURCE=src/mod_prometheus_status.c src/mod_prometheus_status_format.c
 GO_SRC_DIR=cmd/mod_prometheus_status
 GO_SOURCES=\
 		$(GO_SRC_DIR)/dump.go\

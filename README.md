@@ -26,7 +26,7 @@ apache.conf:
 LoadModule prometheus_status_module .../mod_prometheus_status.so
 PrometheusStatusEnabled On
 PrometheusStatusLabelNames  method;status;application
-PrometheusStatusLabelValues %{REQUEST_METHOD};%{RESPONSE_CODE};
+PrometheusStatusLabelValues %m;%s;
 
 <Location /metrics>
   # make collected metrics available at this url
@@ -35,7 +35,7 @@ PrometheusStatusLabelValues %{REQUEST_METHOD};%{RESPONSE_CODE};
 
 # optional custom labels for specific locations
 <Location /test>
-  PrometheusStatusLabel %{REQUEST_METHOD};%{RESPONSE_CODE};application1
+  PrometheusStatusLabel %m;%s;application1
 </Location>
 
 # disable collecting metrics for some locations
@@ -59,11 +59,17 @@ Read more at https://prometheus.io/docs/practices/naming/#labels and
 https://www.robustperception.io/cardinality-is-key
 
 #### PrometheusStatusLabelValues
-Set label values separated by semicolon. You can use some apache internal
-variables here.
+Set label values separated by semicolon. You can use the apache logformat
+here. Some high cardinality variables are not implemented.
 
- - `%{REQUEST_METHOD}` - GET, POST, ...
- - `%{RESPONSE_CODE}` - 200, 404, 500, ...
+Useful examples are:
+
+ - `%m` - request method: ex.: GET, POST, ...
+ - `%s` - response code: ex.: 200, 404, 500, ...
+ - `%v` - canonical ServerName
+
+See http://httpd.apache.org/docs/current/mod/mod_log_config.html#formats for a
+full list of available variables.
 
 ## Metrics
 
