@@ -24,11 +24,16 @@ import (
 	"unsafe"
 )
 
+const (
+	ServerMetrics int = iota
+	RequestMetrics
+)
+
 var EnableDebug = "1"
 var metricsSocket = ""
 
 //export prometheusStatusInit
-func prometheusStatusInit(serverDesc *C.char, rptr uintptr) unsafe.Pointer {
+func prometheusStatusInit(serverDesc *C.char, rptr uintptr, labelNames *C.char) unsafe.Pointer {
 	serverRec := (*C.server_rec)(unsafe.Pointer(rptr))
 
 	// avoid double initializing
@@ -39,7 +44,7 @@ func prometheusStatusInit(serverDesc *C.char, rptr uintptr) unsafe.Pointer {
 	initLogging()
 	log("prometheusStatusInit: %d", os.Getpid())
 
-	registerMetrics(C.GoString(serverDesc), C.GoString(serverRec.server_hostname))
+	registerMetrics(C.GoString(serverDesc), C.GoString(serverRec.server_hostname), C.GoString(labelNames))
 
 	tmpfile, err := ioutil.TempFile("", "metrics.*.sock")
 	if err != nil {
@@ -94,8 +99,10 @@ func metricServer(c net.Conn) {
 				return
 			}
 			return
-		case "update":
-			metricsUpdate(args[1])
+		case "server":
+			metricsUpdate(ServerMetrics, args[1])
+		case "request":
+			metricsUpdate(RequestMetrics, args[1])
 		}
 	}
 }

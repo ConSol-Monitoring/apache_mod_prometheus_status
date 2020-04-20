@@ -3,6 +3,7 @@
 */
 
 #include "ap_config.h"
+#include "apr_strings.h"
 #include "httpd.h"
 #include "http_core.h"
 #include "http_log.h"
@@ -18,10 +19,13 @@
 #define NAME "mod_prometheus_status"
 
 typedef struct {
-    char  context[256];
-    int   enabled;    /* Enable or disable our module */
-    char  label[256]; /* Add custom label */
+    char         context[4096];
+    int          enabled;            /* Enable or disable our module */
+    const char  *label_names;        /* Set custom label names */
+    char         label_values[4096]; /* Add custom label values */
 } prometheus_status_config;
+
+static prometheus_status_config config;
 
 /* Server object for main server as supplied to prometheus_status_init(). */
 static server_rec *main_server = NULL;
@@ -45,18 +49,20 @@ module AP_MODULE_DECLARE_DATA prometheus_status_module;
 /* Handler for the "PrometheusStatusEnabled" directive */
 const char *prometheus_status_set_enabled(cmd_parms *cmd, void *cfg, int val) {
     prometheus_status_config *conf = (prometheus_status_config *) cfg;
-    if(conf) {
-        conf->enabled = val;
-    }
+    conf->enabled = val;
     return NULL;
 }
 
-/* Handler for the "PrometheusStatusLabel" directive */
-const char *prometheus_status_set_label(cmd_parms *cmd, void *cfg, const char *arg) {
+/* Handler for the "PrometheusStatusLabelNames" directive */
+const char *prometheus_status_set_label_names(cmd_parms *cmd, void *cfg, const char *arg) {
+    config.label_names = arg;
+    return NULL;
+}
+
+/* Handler for the "PrometheusStatusLabelValues" directive */
+const char *prometheus_status_set_label_values(cmd_parms *cmd, void *cfg, const char *arg) {
     prometheus_status_config *conf = (prometheus_status_config *) cfg;
-    if(conf) {
-        strcpy(conf->label, arg);
-    }
+    strcpy(conf->label_values, arg);
     return NULL;
 }
 
@@ -152,13 +158,13 @@ static int prometheus_status_monitor() {
 
     nowtime = apr_time_now();
     uptime = (apr_uint32_t) apr_time_sec(nowtime - ap_scoreboard_image->global->restart_time);
-    prometheus_status_send_communication_socket("update:promServerUptime;%ld\n", uptime);
+    prometheus_status_send_communication_socket("server:promServerUptime;%ld\n", uptime);
 
-    prometheus_status_send_communication_socket("update:promMPMGeneration;%d\n", mpm_generation);
-    prometheus_status_send_communication_socket("update:promConfigGeneration;%d\n", ap_state_query(AP_SQ_CONFIG_GEN));
+    prometheus_status_send_communication_socket("server:promMPMGeneration;%d\n", mpm_generation);
+    prometheus_status_send_communication_socket("server:promConfigGeneration;%d\n", ap_state_query(AP_SQ_CONFIG_GEN));
 
     ap_get_loadavg(&cpu);
-    prometheus_status_send_communication_socket("update:promCPULoad;%f\n", cpu.loadavg);
+    prometheus_status_send_communication_socket("server:promCPULoad;%f\n", cpu.loadavg);
 
     for(i = 0; i < server_limit; ++i) {
         ps_record = ap_get_scoreboard_process(i);
@@ -186,19 +192,19 @@ static int prometheus_status_monitor() {
         }
     }
 
-    prometheus_status_send_communication_socket("update:promScoreboard;%d;idle\n",          status_flags[SERVER_READY]);
-    prometheus_status_send_communication_socket("update:promScoreboard;%d;startup\n",       status_flags[SERVER_STARTING]);
-    prometheus_status_send_communication_socket("update:promScoreboard;%d;read\n",          status_flags[SERVER_BUSY_READ]);
-    prometheus_status_send_communication_socket("update:promScoreboard;%d;reply\n",         status_flags[SERVER_BUSY_WRITE]);
-    prometheus_status_send_communication_socket("update:promScoreboard;%d;keepalive\n",     status_flags[SERVER_BUSY_KEEPALIVE]);
-    prometheus_status_send_communication_socket("update:promScoreboard;%d;logging\n",       status_flags[SERVER_BUSY_LOG]);
-    prometheus_status_send_communication_socket("update:promScoreboard;%d;closing\n",       status_flags[SERVER_CLOSING]);
-    prometheus_status_send_communication_socket("update:promScoreboard;%d;graceful_stop\n", status_flags[SERVER_GRACEFUL]);
-    prometheus_status_send_communication_socket("update:promScoreboard;%d;idle_cleanup\n",  status_flags[SERVER_IDLE_KILL]);
-    prometheus_status_send_communication_socket("update:promScoreboard;%d;disabled\n",      status_flags[SERVER_DISABLED]);
+    prometheus_status_send_communication_socket("server:promScoreboard;%d;idle\n",          status_flags[SERVER_READY]);
+    prometheus_status_send_communication_socket("server:promScoreboard;%d;startup\n",       status_flags[SERVER_STARTING]);
+    prometheus_status_send_communication_socket("server:promScoreboard;%d;read\n",          status_flags[SERVER_BUSY_READ]);
+    prometheus_status_send_communication_socket("server:promScoreboard;%d;reply\n",         status_flags[SERVER_BUSY_WRITE]);
+    prometheus_status_send_communication_socket("server:promScoreboard;%d;keepalive\n",     status_flags[SERVER_BUSY_KEEPALIVE]);
+    prometheus_status_send_communication_socket("server:promScoreboard;%d;logging\n",       status_flags[SERVER_BUSY_LOG]);
+    prometheus_status_send_communication_socket("server:promScoreboard;%d;closing\n",       status_flags[SERVER_CLOSING]);
+    prometheus_status_send_communication_socket("server:promScoreboard;%d;graceful_stop\n", status_flags[SERVER_GRACEFUL]);
+    prometheus_status_send_communication_socket("server:promScoreboard;%d;idle_cleanup\n",  status_flags[SERVER_IDLE_KILL]);
+    prometheus_status_send_communication_socket("server:promScoreboard;%d;disabled\n",      status_flags[SERVER_DISABLED]);
 
-    prometheus_status_send_communication_socket("update:promWorkers;%d;ready\n", ready);
-    prometheus_status_send_communication_socket("update:promWorkers;%d;busy\n", busy);
+    prometheus_status_send_communication_socket("server:promWorkers;%d;ready\n", ready);
+    prometheus_status_send_communication_socket("server:promWorkers;%d;busy\n", busy);
 
     return OK;
 }
@@ -209,7 +215,7 @@ static int prometheus_status_handler(request_rec *r) {
     char buffer[4096];
 
     // is the module enabled at all?
-    prometheus_status_config *config = (prometheus_status_config*) ap_get_module_config(r->per_dir_config, &prometheus_status_module);
+    prometheus_status_config *config = (prometheus_status_config*) ap_get_module_config(r->server->module_config, &prometheus_status_module);
     if(config->enabled == 0) {
         return(OK);
     }
@@ -244,14 +250,14 @@ static int prometheus_status_counter(request_rec *r) {
     apr_time_t duration = now - r->request_time;
 
     // is the module enabled at all?
-    prometheus_status_config *config = (prometheus_status_config*) ap_get_module_config(r->per_dir_config, &prometheus_status_module);
-    if(config->enabled == 0) {
+    prometheus_status_config *cfg = (prometheus_status_config*) ap_get_module_config(r->per_dir_config, &prometheus_status_module);
+    if(cfg->enabled == 0) {
         return(OK);
     }
 
-    prometheus_status_send_communication_socket("update:promRequests;1;%s;%d;%s\n", r->method, r->status, config->label);
-    prometheus_status_send_communication_socket("update:promResponseTime;%f;%s\n", (long)duration/(double)APR_USEC_PER_SEC, config->label);
-    prometheus_status_send_communication_socket("update:promResponseSize;%d;%s\n", (int)r->bytes_sent, config->label);
+    prometheus_status_send_communication_socket("request:promRequests;1;%s\n", cfg->label_values);
+    prometheus_status_send_communication_socket("request:promResponseTime;%f;%s\n", (long)duration/(double)APR_USEC_PER_SEC, cfg->label_values);
+    prometheus_status_send_communication_socket("request:promResponseSize;%d;%s\n", (int)r->bytes_sent, cfg->label_values);
     prometheus_status_close_communication_socket();
     return(OK);
 }
@@ -278,12 +284,6 @@ static int prometheus_status_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *p
 
     /* cache main server */
     main_server = s;
-
-    // is the module enabled at all?
-    prometheus_status_config *config = (prometheus_status_config*) ap_get_module_config(s->module_config, &prometheus_status_module);
-    if(config->enabled == 0) {
-        return(OK);
-    }
 
     log("prometheus_status_init version %s", VERSION);
 
@@ -316,7 +316,7 @@ static int prometheus_status_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *p
     prometheusStatusInitFn = dlsym(go_module_handle, "prometheusStatusInit");
 
     // run go initializer
-    metric_socket = (*prometheusStatusInitFn)(ap_get_server_description(), s);
+    metric_socket = (*prometheusStatusInitFn)(ap_get_server_description(), s, config.label_names);
     log("mod_prometheus_status initialized: %s", metric_socket);
 
     apr_pool_cleanup_register(plog, NULL, prometheus_status_cleanup_handler, apr_pool_cleanup_null);
@@ -326,6 +326,10 @@ static int prometheus_status_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *p
 /* prometheus_status_register_hooks registers all required hooks */
 static void prometheus_status_register_hooks(apr_pool_t *p) {
     log("prometheus_status_register_hooks: %s\n", __FILE__);
+    // set defaults
+    config.label_names  = "method;status";
+    strcpy(config.label_values, "%{REQUEST_METHOD};%{RESPONSE_CODE}");
+
     ap_hook_handler(prometheus_status_handler, NULL, NULL, APR_HOOK_MIDDLE);
     ap_hook_post_config(prometheus_status_init, NULL, NULL, APR_HOOK_MIDDLE);
     ap_hook_log_transaction(prometheus_status_counter, NULL, NULL, APR_HOOK_MIDDLE);
@@ -336,42 +340,46 @@ void *prometheus_status_create_dir_conf(apr_pool_t *pool, char *context) {
     context = context ? context : "Newly created configuration";
 
     prometheus_status_config *cfg = apr_pcalloc(pool, sizeof(prometheus_status_config));
-
     if(cfg) {
         // Set some default values
         strcpy(cfg->context, context);
-        cfg->enabled = 0;
-        memset(cfg->label, 0, 256);
+        strcpy(cfg->label_values, "");
+        cfg->enabled = -1;
     }
-
     return cfg;
 }
 
 /* Merging function for configurations */
 void *prometheus_status_merge_dir_conf(apr_pool_t *pool, void *BASE, void *ADD) {
     prometheus_status_config *base = (prometheus_status_config *) BASE;
-    prometheus_status_config *add = (prometheus_status_config *) ADD;
+    prometheus_status_config *add  = (prometheus_status_config *) ADD;
     prometheus_status_config *conf = (prometheus_status_config *) prometheus_status_create_dir_conf(pool, "Merged configuration");
 
-    conf->enabled = (add->enabled == 0) ? base->enabled : add->enabled;
-    strcpy(conf->label, strlen(add->label) ? add->label : base->label);
+    conf->enabled = (add->enabled != -1) ? add->enabled : base->enabled;
+    strcpy(conf->label_values, strlen(add->label_values) ? add->label_values : base->label_values);
     return conf;
+}
+
+/* Function for creating new configurations for per-server contexts */
+void *prometheus_status_create_server_conf(apr_pool_t *pool, server_rec *s) {
+    return(prometheus_status_create_dir_conf(pool, "server config"));
 }
 
 /* available configuration directives */
 static const command_rec prometheus_status_directives[] = {
-    AP_INIT_FLAG("PrometheusStatusEnabled",   prometheus_status_set_enabled, NULL, RSRC_CONF, "Set to Off to disable mod_prometheus_status completely."),
-    AP_INIT_RAW_ARGS("PrometheusStatusLabel", prometheus_status_set_label,   NULL, OR_ALL,   "Set a custom label from within apache directives"),
+    AP_INIT_FLAG("PrometheusStatusEnabled",   prometheus_status_set_enabled,            NULL, OR_ALL,    "Set to Off to disable collecting metrics (for this directory/location)."),
+    AP_INIT_RAW_ARGS("PrometheusStatusLabelNames", prometheus_status_set_label_names,   NULL, RSRC_CONF, "Set a request specific label names from within apache directives."),
+    AP_INIT_RAW_ARGS("PrometheusStatusLabelValues", prometheus_status_set_label_values, NULL, OR_ALL,    "Set a request label values from within apache directives"),
     { NULL }
 };
 
 /* register mod_prometheus_status within the apache */
 module AP_MODULE_DECLARE_DATA prometheus_status_module = {
     STANDARD20_MODULE_STUFF,
-    prometheus_status_create_dir_conf, /* create per-dir    config structures */
-    prometheus_status_merge_dir_conf,  /* merge  per-dir    config structures */
-    NULL,                              /* create per-server config structures */
-    NULL,                              /* merge  per-server config structures */
-    prometheus_status_directives,      /* table of config file commands       */
-    prometheus_status_register_hooks   /* register hooks                      */
+    prometheus_status_create_dir_conf,      /* create per-dir    config structures */
+    prometheus_status_merge_dir_conf,       /* merge  per-dir    config structures */
+    prometheus_status_create_server_conf,   /* create per-server config structures */
+    prometheus_status_merge_dir_conf,       /* merge  per-server config structures */
+    prometheus_status_directives,           /* table of config file commands       */
+    prometheus_status_register_hooks        /* register hooks                      */
 };

@@ -14,7 +14,17 @@ var (
 	collectors = make(map[string]interface{}, 0)
 )
 
-func registerMetrics(serverDesc, serverName string) {
+var labelCount = 0
+
+func registerMetrics(serverDesc, serverName string, labelNames string) {
+	requestLabels := make([]string, 0)
+	labelNames = strings.TrimSpace(labelNames)
+	if labelNames != "" {
+		requestLabels = strings.Split(labelNames, ";")
+	}
+	labelCount = len(requestLabels)
+
+	/* server related metrics */
 	promServerInfo := prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "apache",
@@ -95,18 +105,16 @@ func registerMetrics(serverDesc, serverName string) {
 	registry.MustRegister(promScoreboard)
 	collectors["promScoreboard"] = promScoreboard
 
+	/* request related metrics */
 	promRequests := prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "apache",
 			Name:      "requests_total",
 			Help:      "is the total number of http requests",
 		},
-		[]string{"method", "status", "label"})
+		requestLabels)
 	registry.MustRegister(promRequests)
 	collectors["promRequests"] = promRequests
-	promRequests.WithLabelValues("GET", "200", "").Add(0)
-	promRequests.WithLabelValues("POST", "200", "").Add(0)
-	promRequests.WithLabelValues("HEAD", "200", "").Add(0)
 
 	promResponseTime := prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
@@ -115,7 +123,7 @@ func registerMetrics(serverDesc, serverName string) {
 			Help:      "response time histogram",
 			Buckets:   prometheus.ExponentialBuckets(0.1, 10, 3),
 		},
-		[]string{"label"})
+		requestLabels)
 	registry.MustRegister(promResponseTime)
 	collectors["promResponseTime"] = promResponseTime
 
@@ -126,7 +134,7 @@ func registerMetrics(serverDesc, serverName string) {
 			Help:      "response size histogram",
 			Buckets:   prometheus.ExponentialBuckets(1000, 10, 6),
 		},
-		[]string{"label"})
+		requestLabels)
 	registry.MustRegister(promResponseSize)
 	collectors["promResponseSize"] = promResponseSize
 }
@@ -144,11 +152,21 @@ func metricsGet() []byte {
 	return (buf.Bytes())
 }
 
-func metricsUpdate(data string) {
+func metricsUpdate(metricsType int, data string) {
 	args := strings.Split(data, ";")
 	name := args[0]
 	val, _ := strconv.ParseFloat(args[1], 64)
 	label := args[2:]
+
+	// trim / expand labels to expected size
+	if metricsType == RequestMetrics {
+		switch {
+		case len(label) > labelCount:
+			label = label[0:labelCount]
+		case len(label) < labelCount:
+			label = append(label, make([]string, labelCount-len(label))...)
+		}
+	}
 
 	collector, ok := collectors[name]
 	if !ok {

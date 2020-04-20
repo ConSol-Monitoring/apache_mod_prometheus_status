@@ -21,26 +21,60 @@ copy *BOTH* .so files to the apache module dir.
 
 ## Configuration
 
+apache.conf:
 ```apache
 LoadModule prometheus_status_module .../mod_prometheus_status.so
 PrometheusStatusEnabled On
+PrometheusStatusLabelNames  method;status;application
+PrometheusStatusLabelValues %{REQUEST_METHOD};%{RESPONSE_CODE};
 
 <Location /metrics>
+  # make collected metrics available at this url
   SetHandler prometheus-metrics
 </Location>
 
-# optionall set custom label for specific locations
+# optional custom labels for specific locations
 <Location /test>
-  PrometheusStatusLabel application1
+  PrometheusStatusLabel %{REQUEST_METHOD};%{RESPONSE_CODE};application1
+</Location>
+
+# disable collecting metrics for some locations
+<Location /no_metrics_for_here>
+  PrometheusStatusEnabled Off
 </Location>
 ```
 
-You may want to protect this location by password or domain so no one
-else can look at it. Then you can access the metrics with a URL like:
+### Directives
+
+#### PrometheusStatusEnabled
+Enable or disable collecting metrics. Available on server and directory level.
+
+#### PrometheusStatusLabelNames
+Set label names separated by semicolon. This is a global setting and
+can only be set once on server level since the metrics have to be
+registered and cannot be changed later on.
+
+> **_NOTE:_** Be aware of cardinality explosion and do not overuse labels.
+Read more at https://prometheus.io/docs/practices/naming/#labels and
+https://www.robustperception.io/cardinality-is-key
+
+#### PrometheusStatusLabelValues
+Set label values separated by semicolon. You can use some apache internal
+variables here.
+
+ - `%{REQUEST_METHOD}` - GET, POST, ...
+ - `%{RESPONSE_CODE}` - 200, 404, 500, ...
+
+## Metrics
+
+Then you can access the metrics with a URL like:
 
 http://your_server_name/metrics
 
-## Metrics
+Or whatever you put your `SetHandler prometheus-metrics` to.
+
+> **_NOTE:_** You may want to protect the /metrics location by password or domain so no one else can look at it.
+
 
 So far this modules supports the following metrics:
 
@@ -105,7 +139,6 @@ Cleanup docker machines and test environment by
 
 ## Roadmap
 
-  - [ ] add optional vhost label
   - [ ] add number of vhosts metric
   - [ ] add memory metrics
   - [ ] add example grafana dashboard
