@@ -175,6 +175,7 @@ Some useful ressources during development:
 
   - [ ] add memory metrics
   - [ ] add example grafana dashboard
+  - [ ] add configuration directive for histogram buckets
 
 ## Changes
 
