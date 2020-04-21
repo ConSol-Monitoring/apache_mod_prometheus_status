@@ -27,6 +27,10 @@ MINGOVERSIONSTR:=1.12
 VERSION=$(shell grep "define VERSION" $(WRAPPER_HEADER) | cut -d " " -f 3 | tr -d '"')
 NAME=$(shell grep "define NAME" $(WRAPPER_HEADER) | cut -d " " -f 3 | tr -d '"')
 RELEASENAME=$(NAME)-$(VERSION)-$(shell uname | tr 'A-Z' 'a-z')-$(shell uname -m)
+BUILD_TAG=$(shell git rev-parse --short HEAD >/dev/null 2>&1 >/dev/null 2>&1)
+ifeq ($(BUILD_TAG),)
+  BUILD_TAG=$(VERSION)
+endif
 
 .PHONY: vendor
 
@@ -117,5 +121,5 @@ mod_prometheus_status.so: mod_prometheus_status_go.so $(WRAPPER_SOURCE)
 	install src/.libs/mod_prometheus_status.so mod_prometheus_status.so
 
 mod_prometheus_status_go.so: $(GO_SOURCES) dump
-	go build -buildmode=c-shared -x -ldflags "-s -w -X main.Build=$(shell git rev-parse --short HEAD)" -o mod_prometheus_status_go.so $(GO_SOURCES)
+	go build -buildmode=c-shared -x -ldflags "-s -w -X main.Build=$(BUILD_TAG)" -o mod_prometheus_status_go.so $(GO_SOURCES)
 	chmod 755 mod_prometheus_status_go.so
