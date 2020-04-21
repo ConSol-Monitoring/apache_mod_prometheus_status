@@ -12,3 +12,4 @@
 .vscode
 vendor/
 mod_prometheus_status_go.h
+*.gz

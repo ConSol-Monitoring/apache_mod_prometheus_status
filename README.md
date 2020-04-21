@@ -145,9 +145,18 @@ Cleanup docker machines and test environment by
 
 ## Roadmap
 
-  - [ ] add number of vhosts metric
   - [ ] add memory metrics
   - [ ] add example grafana dashboard
+
+## Changes
+
+```
+0.0.1     Tue Apr 21 09:43:37 CEST 2020
+
+          - initial release
+          - dynamic labeling
+          - basic set of metrics
+```
 
 ## License
 [MIT](https://choosealicense.com/licenses/mit/)

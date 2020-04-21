@@ -2,18 +2,29 @@
 
 APXS=./apxs.sh
 WRAPPER_SOURCE=src/mod_prometheus_status.c src/mod_prometheus_status_format.c
+WRAPPER_HEADER=src/mod_prometheus_status.h
 GO_SRC_DIR=cmd/mod_prometheus_status
 GO_SOURCES=\
 		$(GO_SRC_DIR)/dump.go\
 		$(GO_SRC_DIR)/logger.go\
 		$(GO_SRC_DIR)/prometheus.go\
 		$(GO_SRC_DIR)/module.go
+DISTFILES=\
+	$(APXS) \
+	$(GO_SOURCES) \
+	$(WRAPPER_SOURCE) \
+	$(WRAPPER_HEADER) \
+	go.* \
+	vendor \
+	LICENSE \
+	README.md \
+	Makefile
 
 MINGOVERSION:=00010012
 MINGOVERSIONSTR:=1.12
 
-VERSION=$(shell grep "define VERSION" $(WRAPPER_SOURCE) | cut -d " " -f 3)
-NAME=$(shell grep "define NAME" $(WRAPPER_SOURCE) | cut -d " " -f 3 | tr -d '"')
+VERSION=$(shell grep "define VERSION" $(WRAPPER_HEADER) | cut -d " " -f 3 | tr -d '"')
+NAME=$(shell grep "define NAME" $(WRAPPER_HEADER) | cut -d " " -f 3 | tr -d '"')
 
 
 .PHONY: vendor
@@ -27,7 +38,7 @@ install: mod_prometheus_status.so
 	@echo "and add a LoadModule configuration. See the README for an example configuration."
 
 clean:
-	rm -rf *.so src/.libs/ src/*.la src/*.lo src/*.slo
+	rm -rf *.so src/.libs/ src/*.la src/*.lo src/*.slo mod_prometheus_status_go.h
 	-$(MAKE) -C t clean
 
 test:
@@ -53,6 +64,17 @@ updatedeps: versioncheck
 	go mod tidy
 
 vendor:
+	go mod vendor
+
+dist:
+	mv build_tools/tools.go build_tools/tools.go.off
+	go mod vendor
+	mv build_tools/tools.go.off build_tools/tools.go
+	mv cmd/mod_prometheus_status/dump.go .
+	echo "package main" > cmd/mod_prometheus_status/dump.go
+	tar --transform 's,^,./$(NAME)-$(VERSION)/,g' -cf $(NAME)-$(VERSION).tar $(DISTFILES)
+	gzip -9 $(NAME)-$(VERSION).tar
+	mv dump.go cmd/mod_prometheus_status/dump.go
 	go mod vendor
 
 versioncheck:
@@ -88,5 +110,5 @@ mod_prometheus_status.so: mod_prometheus_status_go.so $(WRAPPER_SOURCE)
 	install src/.libs/mod_prometheus_status.so mod_prometheus_status.so
 
 mod_prometheus_status_go.so: $(GO_SOURCES) dump
-	go build -buildmode=c-shared -x -ldflags "-X main.Build=$(shell git rev-parse --short HEAD)" -o mod_prometheus_status_go.so $(GO_SOURCES)
+	go build -buildmode=c-shared -x -ldflags "-s -w -X main.Build=$(shell git rev-parse --short HEAD)" -o mod_prometheus_status_go.so $(GO_SOURCES)
 	chmod 755 mod_prometheus_status_go.so
