@@ -143,6 +143,13 @@ Cleanup docker machines and test environment by
   make clean
 ```
 
+#### Ressources
+
+Some useful ressources during development:
+
+  - `Apache Module Development` - https://httpd.apache.org/docs/current/developer/modguide.html
+  - `Apache API docs` - https://ci.apache.org/projects/httpd/trunk/doxygen/
+
 ## Roadmap
 
   - [ ] add memory metrics
