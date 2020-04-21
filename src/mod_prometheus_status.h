@@ -13,6 +13,8 @@
 #include "mod_log_config.h"
 #include <unistd.h>
 #include <dlfcn.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 
 module AP_MODULE_DECLARE_DATA prometheus_status_module;
 
@@ -24,3 +26,4 @@ module AP_MODULE_DECLARE_DATA prometheus_status_module;
 apr_array_header_t *parse_log_string(apr_pool_t *p, const char *s, const char **err);
 void prometheus_status_expand_variables(apr_array_header_t *format, request_rec *r, const char**output);
 int prometheus_status_register_all_log_handler(apr_pool_t *p);
+
