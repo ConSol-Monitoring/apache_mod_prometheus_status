@@ -1,6 +1,9 @@
 # mod_prometheus_status
 
-mod_prometheus_status is a [Prometheus](https://prometheus.io/) white box exporter for [Apache](https://httpd.apache.org/) metrics similar to mod_status.
+mod_prometheus_status is a [Prometheus](https://prometheus.io/) white box exporter for [Apache HTTPD](https://httpd.apache.org/) metrics similar to mod_status.
+
+The exporter is a loadable Apache module and serves metrics directly via the apache webserver.
+It comes with dynamic and flexible labeling, see the example configuration below.
 
 ## Requirements
 
