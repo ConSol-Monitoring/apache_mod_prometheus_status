@@ -180,8 +180,11 @@ Some useful ressources during development:
 ## Changes
 
 ```
-0.0.1     Tue Apr 21 09:43:37 CEST 2020
+0.0.2   Tue Apr 21 16:53:05 CEST 2020
+          - add missing includes
+          - improve build from dist tarball
 
+0.0.1   Tue Apr 21 09:43:37 CEST 2020
           - initial release
           - dynamic labeling
           - basic set of metrics
