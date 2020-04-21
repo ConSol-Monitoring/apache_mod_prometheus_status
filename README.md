@@ -124,7 +124,7 @@ easy testing and development.
   make testbox
 ```
 
-This creates a centos 7 box which builds the module whenever the source file changes.
+This creates a Centos 8 box which builds the module whenever the source file changes.
 You can access the module at `http://localhost:3000/metrics`. It might take a moment
 to startup.
 

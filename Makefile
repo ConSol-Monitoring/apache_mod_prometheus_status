@@ -14,6 +14,7 @@ DISTFILES=\
 	$(GO_SOURCES) \
 	$(WRAPPER_SOURCE) \
 	$(WRAPPER_HEADER) \
+	example_apache.conf \
 	go.* \
 	vendor \
 	LICENSE \
@@ -25,7 +26,7 @@ MINGOVERSIONSTR:=1.12
 
 VERSION=$(shell grep "define VERSION" $(WRAPPER_HEADER) | cut -d " " -f 3 | tr -d '"')
 NAME=$(shell grep "define NAME" $(WRAPPER_HEADER) | cut -d " " -f 3 | tr -d '"')
-
+RELEASENAME=$(NAME)-$(VERSION)-$(shell uname | tr 'A-Z' 'a-z')-$(shell uname -m)
 
 .PHONY: vendor
 
@@ -76,6 +77,12 @@ dist:
 	gzip -9 $(NAME)-$(VERSION).tar
 	mv dump.go cmd/mod_prometheus_status/dump.go
 	go mod vendor
+
+releasetarball: clean build
+	tar --transform 's,^,./$(RELEASENAME)/,g' -cf $(RELEASENAME).tar *.so example_apache.conf README.md LICENSE
+	gzip -9 $(RELEASENAME).tar
+
+release: releasetarball dist
 
 versioncheck:
 	@[ $$( printf '%s\n' $(GOVERSION) $(MINGOVERSION) | sort | head -n 1 ) = $(MINGOVERSION) ] || { \
