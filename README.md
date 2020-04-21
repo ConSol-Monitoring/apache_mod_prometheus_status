@@ -2,10 +2,24 @@
 
 mod_prometheus_status is a [Prometheus](https://prometheus.io/) white box exporter for [Apache HTTPD](https://httpd.apache.org/) metrics similar to mod_status.
 
-The exporter is a loadable Apache module and serves metrics directly via the apache webserver.
-It comes with dynamic and flexible labeling, see the example configuration below.
+The exporter is a loadable Apache module and serves metrics directly via the
+apache webserver. It comes with dynamic and flexible labeling, see the example
+configuration below.
 
-## Requirements
+## How it works
+Since prometheus exporter are usually bound to a single process and the apache
+webserver is a multiprocess daemon, this module starts a metrics collector in
+the parent httpd process.
+
+Upon start the main collector creates the prometheus client library registry
+based on the `PrometheusStatusLabelNames`. It then opens a unix socket to
+receive the metrics updates from the child workers.
+
+On each request, the client worker sends its metrics based on
+`PrometheusStatusLabelValues`, which utilizes Apaches LogFormat, to the metrics
+collector.
+
+## Build Requirements
 
   - gcc compiler to build (4.9 or newer)
     - apache header files
@@ -14,17 +28,20 @@ It comes with dynamic and flexible labeling, see the example configuration below
 
 ## Installation
 
+> **_NOTE:_** Prebuild modules are available at https://github.com/ConSol/apache_mod_prometheus_status/releases
+
 Compile the module like this:
 
 ```bash
   make
 ```
 
-copy *BOTH* .so files to the apache module dir.
+Copy *BOTH* .so files to the apache module directory and adjust the example
+configuration.
 
 ## Configuration
 
-apache.conf:
+### apache.conf:
 ```apache
 LoadModule prometheus_status_module .../mod_prometheus_status.so
 PrometheusStatusEnabled On
@@ -53,17 +70,17 @@ PrometheusStatusLabelValues %m;%s;
 Enable or disable collecting metrics. Available on server and directory level.
 
 #### PrometheusStatusLabelNames
-Set label names separated by semicolon. This is a global setting and
-can only be set once on server level since the metrics have to be
-registered and cannot be changed later on.
+Set label names separated by semicolon. This is a global setting and can only
+be set once on server level since the metrics have to be registered and cannot
+be changed later on.
 
 > **_NOTE:_** Be aware of cardinality explosion and do not overuse labels.
 Read more at https://prometheus.io/docs/practices/naming/#labels and
 https://www.robustperception.io/cardinality-is-key
 
 #### PrometheusStatusLabelValues
-Set label values separated by semicolon. You can use the apache logformat
-here. Some high cardinality variables are not implemented.
+Set label values separated by semicolon. You can use the apache logformat here.
+Some high cardinality variables are not implemented.
 
 Useful examples are:
 
@@ -127,12 +144,13 @@ easy testing and development.
   make testbox
 ```
 
-This creates a Centos 8 box which builds the module whenever the source file changes.
-You can access the module at `http://localhost:3000/metrics`. It might take a moment
-to startup.
+This creates a Centos 8 box which builds the module whenever the source file
+changes. You can access the module at `http://localhost:3000/metrics`. It might
+take a moment to startup.
 
-You can access the grafana dashboard at `http://localhost:3001/dashboard/grafana/` and the
-Prometheus instance at `http://localhost:3001/dashboard/prometheus/`.
+You can access the grafana dashboard at
+`http://localhost:3001/dashboard/grafana/` and the Prometheus instance at
+`http://localhost:3001/dashboard/prometheus/`.
 
 Run the unit/integration tests like this:
 
