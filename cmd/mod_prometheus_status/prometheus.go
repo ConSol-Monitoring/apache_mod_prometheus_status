@@ -16,7 +16,7 @@ var (
 
 var labelCount = 0
 
-func registerMetrics(serverDesc, serverName string, labelNames string) {
+func registerMetrics(serverDesc, serverName, labelNames, mpmName string) {
 	requestLabels := make([]string, 0)
 	labelNames = strings.TrimSpace(labelNames)
 	if labelNames != "" {
@@ -31,9 +31,9 @@ func registerMetrics(serverDesc, serverName string, labelNames string) {
 			Name:      "server_info",
 			Help:      "information about the apache version",
 		},
-		[]string{"server_description"})
+		[]string{"server_description", "mpm"})
 	registry.MustRegister(promServerInfo)
-	promServerInfo.WithLabelValues(serverDesc).Add(1)
+	promServerInfo.WithLabelValues(serverDesc, mpmName).Add(1)
 	collectors["promServerInfo"] = promServerInfo
 
 	promServerName := prometheus.NewCounterVec(

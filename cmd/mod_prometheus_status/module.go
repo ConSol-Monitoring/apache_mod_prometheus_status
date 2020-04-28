@@ -33,7 +33,7 @@ var EnableDebug = "1"
 var metricsSocket = ""
 
 //export prometheusStatusInit
-func prometheusStatusInit(serverDesc *C.char, rptr uintptr, labelNames *C.char) unsafe.Pointer {
+func prometheusStatusInit(serverDesc *C.char, rptr uintptr, labelNames *C.char, mpmName *C.char) unsafe.Pointer {
 	serverRec := (*C.server_rec)(unsafe.Pointer(rptr))
 
 	// avoid double initializing
@@ -44,7 +44,7 @@ func prometheusStatusInit(serverDesc *C.char, rptr uintptr, labelNames *C.char) 
 	initLogging()
 	log("prometheusStatusInit: %d", os.Getpid())
 
-	registerMetrics(C.GoString(serverDesc), C.GoString(serverRec.server_hostname), C.GoString(labelNames))
+	registerMetrics(C.GoString(serverDesc), C.GoString(serverRec.server_hostname), C.GoString(labelNames), C.GoString(mpmName))
 
 	tmpfile, err := ioutil.TempFile("", "metrics.*.sock")
 	if err != nil {

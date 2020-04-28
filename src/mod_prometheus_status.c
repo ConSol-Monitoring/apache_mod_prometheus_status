@@ -280,6 +280,8 @@ static int prometheus_status_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *p
     ap_mpm_query(AP_MPMQ_MAX_DAEMONS, &max_servers);
     ap_mpm_query(AP_MPMQ_MAX_THREADS, &threads_per_child);
 
+    const char* mpm_name = ap_show_mpm();
+
     /* work around buggy MPMs */
     if (threads_per_child == 0)
         threads_per_child = 1;
@@ -304,7 +306,7 @@ static int prometheus_status_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *p
     prometheusStatusInitFn = dlsym(go_module_handle, "prometheusStatusInit");
 
     // run go initializer
-    metric_socket = (*prometheusStatusInitFn)(ap_get_server_description(), s, config.label_names);
+    metric_socket = (*prometheusStatusInitFn)(ap_get_server_description(), s, config.label_names, mpm_name);
     log("mod_prometheus_status initialized: %s", metric_socket);
 
     apr_pool_cleanup_register(plog, NULL, prometheus_status_cleanup_handler, apr_pool_cleanup_null);
