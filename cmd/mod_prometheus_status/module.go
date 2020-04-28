@@ -29,30 +29,37 @@ const (
 	RequestMetrics
 )
 
+// TODO: make this build option
 var EnableDebug = "1"
 var metricsSocket = ""
+var listener *net.Listener
+var defaultSocketTimeout = 1
 
 //export prometheusStatusInit
-func prometheusStatusInit(serverDesc *C.char, rptr uintptr, labelNames *C.char, mpmName *C.char) unsafe.Pointer {
+func prometheusStatusInit(serverDesc *C.char, rptr uintptr, labelNames *C.char, mpmName *C.char, socketTimeout int) unsafe.Pointer {
 	serverRec := (*C.server_rec)(unsafe.Pointer(rptr))
+	defaultSocketTimeout = socketTimeout
 
 	// avoid double initializing
-	if metricsSocket != "" {
-		return unsafe.Pointer(C.CString(metricsSocket))
+	if metricsSocket == "" {
+		initLogging()
+		registerMetrics(C.GoString(serverDesc), C.GoString(serverRec.server_hostname), C.GoString(labelNames), C.GoString(mpmName))
+		tmpfile, err := ioutil.TempFile("", "metrics.*.sock")
+		if err != nil {
+			log("failed to get tmpfile: %s", err.Error())
+		}
+		metricsSocket = tmpfile.Name()
+	} else {
+		// close old server
+		log("prometheusStatusInit closing old listener")
+		if listener != nil {
+			(*listener).Close()
+			listener = nil
+		}
 	}
-
-	initLogging()
-	log("prometheusStatusInit: %d", os.Getpid())
-
-	registerMetrics(C.GoString(serverDesc), C.GoString(serverRec.server_hostname), C.GoString(labelNames), C.GoString(mpmName))
-
-	tmpfile, err := ioutil.TempFile("", "metrics.*.sock")
-	if err != nil {
-		log("failed to get tmpfile: %s", err.Error())
-	}
-	metricsSocket = tmpfile.Name()
 	go startMetricServer()
 
+	log("prometheusStatusInit: %d", os.Getpid())
 	return unsafe.Pointer(C.CString(metricsSocket))
 }
 
@@ -63,15 +70,22 @@ func startMetricServer() {
 	if err != nil {
 		log("listen error: %s", err.Error())
 	}
-	defer l.Close()
+	listener = &l
+	defer func() {
+		if listener != nil {
+			(*listener).Close()
+			listener = nil
+		}
+	}()
 
 	log("listening on metricsSocket: %s", metricsSocket)
 	for {
 		conn, err := l.Accept()
 		if err != nil {
-			log("accept error: %s", err)
+			// listener closed
+			return
 		}
-		conn.SetDeadline(time.Now().Add(1 * time.Second))
+		conn.SetDeadline(time.Now().Add(time.Duration(defaultSocketTimeout) * time.Second))
 		go metricServer(conn)
 	}
 }

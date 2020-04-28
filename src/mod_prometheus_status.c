@@ -26,6 +26,7 @@ static server_rec *main_server = NULL;
 
 char* (*prometheusStatusInitFn)() = NULL;
 char *metric_socket = NULL;
+int golang_proc_pid = 0;
 int metric_socket_fd = 0;
 
 /* Handler for the "PrometheusStatusEnabled" directive */
@@ -65,7 +66,7 @@ static int prometheus_status_open_communication_socket() {
     }
 
     struct timeval timeout;
-    timeout.tv_sec  = 1;
+    timeout.tv_sec  = defaultSocketTimeout;
     timeout.tv_usec = 0;
 
     if(setsockopt(metric_socket_fd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout)) < 0) {
@@ -251,6 +252,10 @@ static int prometheus_status_counter(request_rec *r) {
 }
 
 static apr_status_t prometheus_status_cleanup_handler() {
+    // do nothing unless we are the main process
+    if(golang_proc_pid != getpid()) {
+        return(OK);
+    }
     if(metric_socket != NULL) {
         unlink(metric_socket);
         metric_socket = NULL;
@@ -301,15 +306,17 @@ static int prometheus_status_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *p
             exit(1);
         }
     }
-    log("prometheus_status_init gomodule loaded: %p", go_module_handle);
+    log("prometheus_status_init gomodule loaded");
+
+    golang_proc_pid = getpid();
 
     prometheusStatusInitFn = dlsym(go_module_handle, "prometheusStatusInit");
 
     // run go initializer
-    metric_socket = (*prometheusStatusInitFn)(ap_get_server_description(), s, config.label_names, mpm_name);
+    metric_socket = (*prometheusStatusInitFn)(ap_get_server_description(), s, config.label_names, mpm_name, defaultSocketTimeout);
     log("mod_prometheus_status initialized: %s", metric_socket);
 
-    apr_pool_cleanup_register(plog, NULL, prometheus_status_cleanup_handler, apr_pool_cleanup_null);
+    apr_pool_cleanup_register(p, NULL, prometheus_status_cleanup_handler, apr_pool_cleanup_null);
     return OK;
 }
 
