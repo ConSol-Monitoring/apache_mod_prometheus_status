@@ -176,6 +176,9 @@ Some useful ressources during development:
   - [ ] add memory metrics
   - [ ] add example grafana dashboard
   - [ ] add configuration directive for histogram buckets
+  - [ ] add trimmable path label, ex.: %{p:1:2} which uses 2 directories levels, starting at the first level
+  - [ ] add mpm type as serverinfo label
+  - [ ] test with different mpm types
 
 ## Changes
 
