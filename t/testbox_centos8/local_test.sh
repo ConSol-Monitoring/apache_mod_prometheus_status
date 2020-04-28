@@ -1,0 +1,1 @@
+../common/local_test.sh

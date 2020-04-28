@@ -1,0 +1,23 @@
+---
+- hosts: all
+  tasks:
+
+# machine preparation
+  - apt:
+      name:
+        - software-properties-common
+        - libtest-harness-perl
+        - apache2-dev
+        - gcc
+        - rsync
+        - gdb
+        - strace
+        - inotify-tools
+      state: present
+  - shell: add-apt-repository -y ppa:longsleep/golang-backports
+  - apt:
+      name:
+        - golang-go
+      state: present
+  - name: import common tasks
+    import_tasks: /src/t/common/apache/playbook_common.yml

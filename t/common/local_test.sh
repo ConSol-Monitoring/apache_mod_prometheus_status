@@ -6,7 +6,7 @@ if [ "x$1" != "x" ]; then
   shift
 fi
 
-TESTS="/src/t/testbox/t/*.t"
+TESTS="/src/t/common/t/*.t"
 if [ "x$1" != "x" ]; then
   TESTS="$*"
   shift

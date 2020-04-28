@@ -7,7 +7,7 @@ fi
 
 echo "building... "
 mkdir -p var/tmp/build
-rsync -av /src/. var/tmp/build/.
+rsync -av --exclude=.git/ /src/. var/tmp/build/.
 cd var/tmp/build && \
     make build && \
     echo "build OK" && \

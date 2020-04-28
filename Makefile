@@ -49,10 +49,10 @@ clean:
 test:
 	$(MAKE) -C t test
 
-testbox:
-	$(MAKE) -C t testbox
+testbox_centos8:
+	$(MAKE) -C t testbox_centos8
 
-update_readme_available_metrics: testbox
+update_readme_available_metrics: testbox_centos8
 	echo '```' > metrics.txt
 	curl -qs http://localhost:3000/metrics >/dev/null 2>&1 # warm up metrics
 	curl -qs http://localhost:3000/metrics | grep ^# | grep apache | sort -k 3 >> metrics.txt

@@ -1,0 +1,18 @@
+---
+- hosts: all
+  tasks:
+# machine preparation
+  - yum:
+      name:
+        - perl-Test-Harness
+        - httpd-devel
+        - gcc
+        - rsync
+        - gdb
+        - strace
+        - inotify-tools
+        - redhat-rpm-config
+        - golang
+      state: present
+  - name: import common tasks
+    import_tasks: /src/t/common/apache/playbook_common.yml
