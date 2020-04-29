@@ -15,7 +15,7 @@ cd $OMD_ROOT
 
 . ~/.profile
 
-DAEMON=/src/t/testbox/apache/build_watcher.sh
+DAEMON=/src/t/common/apache/build_watcher.sh
 NAME=build_watcher
 PIDFILE=$OMD_ROOT/tmp/run/build_watcher.lock
 LOGFILE=$OMD_ROOT/var/log/build_watcher.log

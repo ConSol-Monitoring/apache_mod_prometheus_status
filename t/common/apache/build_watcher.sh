@@ -14,6 +14,6 @@ trap finish EXIT
 # keep watching for changes
 while inotifywait -q -e close_write /src/src/*.c /src/cmd/mod_prometheus_status/*.go; do
   sleep 1
-  /src/t/testbox/apache/build.sh
+  /src/t/common/apache/build.sh
 done
 

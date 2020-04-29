@@ -177,7 +177,6 @@ Some useful ressources during development:
   - [ ] add example grafana dashboard
   - [ ] add configuration directive for histogram buckets
   - [ ] add trimmable path label, ex.: %{p:1:2} which uses 2 directories levels, starting at the first level
-  - [ ] test with different mpm types
 
 ## Changes
 
