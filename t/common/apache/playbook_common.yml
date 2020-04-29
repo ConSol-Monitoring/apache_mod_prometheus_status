@@ -56,6 +56,11 @@
     src: /src/t/common/apache/prometheus.yml
     dest: /omd/sites/dashboard/etc/prometheus/prometheus.d/scrape_configs/static/01-apache.yml
     state: link
+- name: add apache status dashboard
+  file:
+    src: /src/Apache-Dashboard.json
+    dest: /omd/sites/dashboard/var/grafana/dashboards/Apache-Status.json
+    state: link
 - name: set default user for grafana
   lineinfile:
     path: /omd/sites/dashboard/etc/apache/conf.d/grafana.conf

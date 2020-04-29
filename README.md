@@ -181,6 +181,9 @@ Some useful ressources during development:
 ## Changes
 
 ```
+next:
+          - add example grafana dashboard
+
 0.0.3   Wed Apr 29 10:01:17 CEST 2020
           - fixed reload issue on some systems
 

@@ -17,6 +17,7 @@ DISTFILES=\
 	example_apache.conf \
 	go.* \
 	vendor \
+	Apache-Dashboard.json \
 	LICENSE \
 	README.md \
 	Makefile
