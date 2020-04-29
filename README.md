@@ -181,6 +181,9 @@ Some useful ressources during development:
 ## Changes
 
 ```
+0.0.3   Wed Apr 29 10:01:17 CEST 2020
+          - fixed reload issue on some systems
+
 0.0.2   Tue Apr 21 16:53:05 CEST 2020
           - add missing includes
           - improve build from dist tarball
