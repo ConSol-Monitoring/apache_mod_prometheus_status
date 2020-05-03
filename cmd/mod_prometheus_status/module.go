@@ -36,15 +36,18 @@ var listener *net.Listener
 var defaultSocketTimeout = 1
 
 //export prometheusStatusInit
-func prometheusStatusInit(serverDesc *C.char, rptr uintptr, labelNames *C.char, mpmName *C.char, socketTimeout int) unsafe.Pointer {
+func prometheusStatusInit(serverDesc *C.char, rptr uintptr, labelNames *C.char, mpmName *C.char, socketTimeout int, tmpFolder, timeBuckets, sizeBuckets *C.char) unsafe.Pointer {
 	serverRec := (*C.server_rec)(unsafe.Pointer(rptr))
 	defaultSocketTimeout = socketTimeout
 
 	// avoid double initializing
 	if metricsSocket == "" {
 		initLogging()
-		registerMetrics(C.GoString(serverDesc), C.GoString(serverRec.server_hostname), C.GoString(labelNames), C.GoString(mpmName))
-		tmpfile, err := ioutil.TempFile("", "metrics.*.sock")
+		err := registerMetrics(C.GoString(serverDesc), C.GoString(serverRec.server_hostname), C.GoString(labelNames), C.GoString(mpmName), C.GoString(timeBuckets), C.GoString(sizeBuckets))
+		if err != nil {
+			log("failed to initialize metrics: %s", err.Error())
+		}
+		tmpfile, err := ioutil.TempFile(C.GoString(tmpFolder), "metrics.*.sock")
 		if err != nil {
 			log("failed to get tmpfile: %s", err.Error())
 		}
@@ -58,6 +61,7 @@ func prometheusStatusInit(serverDesc *C.char, rptr uintptr, labelNames *C.char, 
 		}
 	}
 	go startMetricServer()
+	// TODO: wait till socket started
 
 	log("prometheusStatusInit: %d", os.Getpid())
 	return unsafe.Pointer(C.CString(metricsSocket))

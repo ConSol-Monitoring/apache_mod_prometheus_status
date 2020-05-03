@@ -14,8 +14,14 @@ static int server_limit, thread_limit, threads_per_child, max_servers;
 
 typedef struct {
     char                context[4096];
-    int                 enabled;            /* Enable or disable our module */
+    /* server level options */
     const char         *label_names;        /* Set custom label names */
+    const char         *time_buckets;       /* raw response time buckets */
+    const char         *size_buckets;       /* raw response size buckets */
+    const char         *tmp_folder;         /* tmp folder for the socket */
+
+    /* directory level options */
+    int                 enabled;            /* Enable or disable our module */
     char                label_values[4096]; /* Add custom label values */
     apr_array_header_t *label_format;       /* parsed label format */
 } prometheus_status_config;
@@ -39,6 +45,24 @@ const char *prometheus_status_set_enabled(cmd_parms *cmd, void *cfg, int val) {
 /* Handler for the "PrometheusStatusLabelNames" directive */
 static const char *prometheus_status_set_label_names(cmd_parms *cmd, void *cfg, const char *arg) {
     config.label_names  = arg;
+    return NULL;
+}
+
+/* Handler for the "PrometheusStatusTmpFolder" directive */
+static const char *prometheus_status_set_tmp_folder(cmd_parms *cmd, void *cfg, const char *arg) {
+    config.tmp_folder  = arg;
+    return NULL;
+}
+
+/* Handler for the "PrometheusStatusResponseTimeBuckets" directive */
+static const char *prometheus_status_set_time_buckets(cmd_parms *cmd, void *cfg, const char *arg) {
+    config.size_buckets  = arg;
+    return NULL;
+}
+
+/* Handler for the "PrometheusStatusResponseSizeBuckets" directive */
+static const char *prometheus_status_set_size_buckets(cmd_parms *cmd, void *cfg, const char *arg) {
+    config.size_buckets  = arg;
     return NULL;
 }
 
@@ -313,7 +337,20 @@ static int prometheus_status_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *p
     prometheusStatusInitFn = dlsym(go_module_handle, "prometheusStatusInit");
 
     // run go initializer
-    metric_socket = (*prometheusStatusInitFn)(ap_get_server_description(), s, config.label_names, mpm_name, defaultSocketTimeout);
+    metric_socket = (*prometheusStatusInitFn)(
+        ap_get_server_description(),
+        s,
+        config.label_names,
+        mpm_name,
+        defaultSocketTimeout,
+        config.tmp_folder,
+        config.time_buckets,
+        config.size_buckets
+    );
+    if(!strcmp(metric_socket, "")) {
+        log("mod_prometheus_status initializing failed");
+        exit(1);
+    }
     log("mod_prometheus_status initialized: %s", metric_socket);
 
     apr_pool_cleanup_register(p, NULL, prometheus_status_cleanup_handler, apr_pool_cleanup_null);
@@ -326,6 +363,8 @@ static void prometheus_status_register_hooks(apr_pool_t *p) {
     const char *err_string = NULL;
     // set defaults
     config.label_names  = "method;status";
+    config.time_buckets = "0.01;0.1;1;10;30";
+    config.size_buckets = "1000;10000;100000;1000000;10000000;100000000";
     strcpy(config.label_values, "%m;%s");
 
     log_hash = apr_hash_make(p);
@@ -374,9 +413,15 @@ void *prometheus_status_create_server_conf(apr_pool_t *pool, server_rec *s) {
 
 /* available configuration directives */
 static const command_rec prometheus_status_directives[] = {
-    AP_INIT_FLAG("PrometheusStatusEnabled",   prometheus_status_set_enabled,            NULL, OR_ALL,    "Set to Off to disable collecting metrics (for this directory/location)."),
-    AP_INIT_RAW_ARGS("PrometheusStatusLabelNames", prometheus_status_set_label_names,   NULL, RSRC_CONF, "Set a request specific label names from within apache directives."),
-    AP_INIT_RAW_ARGS("PrometheusStatusLabelValues", prometheus_status_set_label_values, NULL, OR_ALL,    "Set a request label values from within apache directives"),
+    /* server level */
+    AP_INIT_RAW_ARGS("PrometheusStatusLabelNames",          prometheus_status_set_label_names,   NULL, RSRC_CONF, "Set a request specific label names from within apache directives."),
+    AP_INIT_RAW_ARGS("PrometheusStatusTmpFolder",           prometheus_status_set_tmp_folder,    NULL, RSRC_CONF, "Set folder for communication socket."),
+    AP_INIT_RAW_ARGS("PrometheusStatusResponseTimeBuckets", prometheus_status_set_time_buckets,  NULL, RSRC_CONF, "Set response time histogram buckets."),
+    AP_INIT_RAW_ARGS("PrometheusStatusResponseSizeBuckets", prometheus_status_set_size_buckets,  NULL, RSRC_CONF, "Set response size histogram buckets."),
+
+    /* directory level */
+    AP_INIT_FLAG("PrometheusStatusEnabled",                 prometheus_status_set_enabled,       NULL, OR_ALL,    "Set to Off to disable collecting metrics (for this directory/location)."),
+    AP_INIT_RAW_ARGS("PrometheusStatusLabelValues",         prometheus_status_set_label_values,  NULL, OR_ALL,    "Set a request label values from within apache directives"),
     { NULL }
 };
 

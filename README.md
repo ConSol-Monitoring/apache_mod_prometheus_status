@@ -44,9 +44,12 @@ configuration.
 ### apache.conf:
 ```apache
 LoadModule prometheus_status_module .../mod_prometheus_status.so
-PrometheusStatusEnabled On
-PrometheusStatusLabelNames  method;status;application
-PrometheusStatusLabelValues %m;%s;
+PrometheusStatusEnabled               On
+PrometheusStatusLabelNames            vhost;method;status;application
+PrometheusStatusLabelValues           %v;%m;%s;
+PrometheusStatusTmpFolder             /tmp
+PrometheusStatusResponseTimeBuckets   0.01;0.1;1;10;30
+PrometheusStatusResponseSizeBuckets   1000;10000;100000;1000000;10000000;100000000
 
 <Location /metrics>
   # make collected metrics available at this url
@@ -55,7 +58,7 @@ PrometheusStatusLabelValues %m;%s;
 
 # optional custom labels for specific locations
 <Location /test>
-  PrometheusStatusLabel %m;%s;application1
+  PrometheusStatusLabel %v;%m;%s;application1
 </Location>
 
 # disable collecting metrics for some locations
@@ -90,6 +93,15 @@ Useful examples are:
 
 See http://httpd.apache.org/docs/current/mod/mod_log_config.html#formats for a
 full list of available variables.
+
+#### PrometheusStatusTmpFolder
+Set the folder where the interprocess communication socket will be created in.
+
+#### PrometheusStatusResponseTimeBuckets
+Set the buckets for the response time histogram.
+
+#### PrometheusStatusResponseSizeBuckets
+Set the buckets for the response size histogram.
 
 ## Metrics
 
@@ -183,6 +195,10 @@ Some useful ressources during development:
 ```
 next:
           - add example grafana dashboard
+          - add new apache directives:
+            - PrometheusStatusTmpFolder
+            - PrometheusStatusResponseTimeBuckets
+            - PrometheusStatusResponseSizeBuckets
 
 0.0.3   Wed Apr 29 10:01:17 CEST 2020
           - fixed reload issue on some systems

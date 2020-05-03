@@ -16,7 +16,7 @@ var (
 
 var labelCount = 0
 
-func registerMetrics(serverDesc, serverName, labelNames, mpmName string) {
+func registerMetrics(serverDesc, serverName, labelNames, mpmName, timeBuckets, sizeBuckets string) (err error) {
 	requestLabels := make([]string, 0)
 	labelNames = strings.TrimSpace(labelNames)
 	if labelNames != "" {
@@ -116,27 +116,36 @@ func registerMetrics(serverDesc, serverName, labelNames, mpmName string) {
 	registry.MustRegister(promRequests)
 	collectors["promRequests"] = promRequests
 
+	timeBucketList, err := expandBuckets(timeBuckets)
+	if err != nil {
+		return
+	}
 	promResponseTime := prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: "apache",
 			Name:      "response_time_seconds",
 			Help:      "response time histogram",
-			Buckets:   prometheus.ExponentialBuckets(0.1, 10, 3),
+			Buckets:   timeBucketList,
 		},
 		requestLabels)
 	registry.MustRegister(promResponseTime)
 	collectors["promResponseTime"] = promResponseTime
 
+	sizeBucketList, err := expandBuckets(sizeBuckets)
+	if err != nil {
+		return
+	}
 	promResponseSize := prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: "apache",
 			Name:      "response_size_bytes",
 			Help:      "response size histogram",
-			Buckets:   prometheus.ExponentialBuckets(1000, 10, 6),
+			Buckets:   sizeBucketList,
 		},
 		requestLabels)
 	registry.MustRegister(promResponseSize)
 	collectors["promResponseSize"] = promResponseSize
+	return
 }
 
 func metricsGet() []byte {
@@ -187,4 +196,17 @@ func metricsUpdate(metricsType int, data string) {
 	default:
 		log("unknown type: %T from metric %s", col, data)
 	}
+}
+
+func expandBuckets(input string) (list []float64, err error) {
+	for _, s := range strings.Split(input, ";") {
+		s = strings.TrimSpace(s)
+		n, fErr := strconv.ParseFloat(s, 64)
+		if fErr != nil {
+			err = fErr
+			return
+		}
+		list = append(list, n)
+	}
+	return
 }
