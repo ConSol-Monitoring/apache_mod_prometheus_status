@@ -72,18 +72,26 @@ PrometheusStatusResponseSizeBuckets   1000;10000;100000;1000000;10000000;1000000
 #### PrometheusStatusEnabled
 Enable or disable collecting metrics. Available on server and directory level.
 
+  Default: On
+
 #### PrometheusStatusLabelNames
 Set label names separated by semicolon. This is a global setting and can only
 be set once on server level since the metrics have to be registered and cannot
 be changed later on.
 
+  Default: method;status
+
 > **_NOTE:_** Be aware of cardinality explosion and do not overuse labels.
 Read more at https://prometheus.io/docs/practices/naming/#labels and
 https://www.robustperception.io/cardinality-is-key
 
+> **_NOTE:_** Cannot be changed with a apache reload, full restart required.
+
 #### PrometheusStatusLabelValues
 Set label values separated by semicolon. You can use the apache logformat here.
 Some high cardinality variables are not implemented.
+
+  Default: %m;%s
 
 Useful examples are:
 
@@ -97,11 +105,23 @@ full list of available variables.
 #### PrometheusStatusTmpFolder
 Set the folder where the interprocess communication socket will be created in.
 
+  Default: /tmp (or system default temporary folder)
+
+> **_NOTE:_** Cannot be changed with a apache reload, full restart required.
+
 #### PrometheusStatusResponseTimeBuckets
 Set the buckets for the response time histogram.
 
+  Default: 0.01;0.1;1;10;30
+
+> **_NOTE:_** Cannot be changed with a apache reload, full restart required.
+
 #### PrometheusStatusResponseSizeBuckets
 Set the buckets for the response size histogram.
+
+  Default: 1000;10000;100000;1000000;10000000;100000000
+
+> **_NOTE:_** Cannot be changed with a apache reload, full restart required.
 
 ## Metrics
 
@@ -199,6 +219,7 @@ next:
             - PrometheusStatusTmpFolder
             - PrometheusStatusResponseTimeBuckets
             - PrometheusStatusResponseSizeBuckets
+          - fix permission issue with system apaches starting as root
 
 0.0.3   Wed Apr 29 10:01:17 CEST 2020
           - fixed reload issue on some systems

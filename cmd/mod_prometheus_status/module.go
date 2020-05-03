@@ -36,7 +36,7 @@ var listener *net.Listener
 var defaultSocketTimeout = 1
 
 //export prometheusStatusInit
-func prometheusStatusInit(serverDesc *C.char, rptr uintptr, labelNames *C.char, mpmName *C.char, socketTimeout int, tmpFolder, timeBuckets, sizeBuckets *C.char) unsafe.Pointer {
+func prometheusStatusInit(serverDesc *C.char, rptr uintptr, userId, groupId C.int, labelNames *C.char, mpmName *C.char, socketTimeout int, tmpFolder, timeBuckets, sizeBuckets *C.char) unsafe.Pointer {
 	serverRec := (*C.server_rec)(unsafe.Pointer(rptr))
 	defaultSocketTimeout = socketTimeout
 
@@ -46,10 +46,16 @@ func prometheusStatusInit(serverDesc *C.char, rptr uintptr, labelNames *C.char, 
 		err := registerMetrics(C.GoString(serverDesc), C.GoString(serverRec.server_hostname), C.GoString(labelNames), C.GoString(mpmName), C.GoString(timeBuckets), C.GoString(sizeBuckets))
 		if err != nil {
 			log("failed to initialize metrics: %s", err.Error())
+			return unsafe.Pointer(C.CString(""))
 		}
-		tmpfile, err := ioutil.TempFile(C.GoString(tmpFolder), "metrics.*.sock")
+		tmpdir := ""
+		if tmpFolder != nil {
+			tmpdir = C.GoString(tmpFolder)
+		}
+		tmpfile, err := ioutil.TempFile(tmpdir, "metrics.*.sock")
 		if err != nil {
 			log("failed to get tmpfile: %s", err.Error())
+			return unsafe.Pointer(C.CString(""))
 		}
 		metricsSocket = tmpfile.Name()
 	} else {
@@ -60,19 +66,25 @@ func prometheusStatusInit(serverDesc *C.char, rptr uintptr, labelNames *C.char, 
 			listener = nil
 		}
 	}
-	go startMetricServer()
+	go startMetricServer(metricsSocket, int(userId), int(groupId))
 	// TODO: wait till socket started
 
 	log("prometheusStatusInit: %d", os.Getpid())
 	return unsafe.Pointer(C.CString(metricsSocket))
 }
 
-func startMetricServer() {
-	os.Remove(metricsSocket)
-	log("InitMetricsCollector")
-	l, err := net.Listen("unix", metricsSocket)
+func startMetricServer(socketPath string, userId, groupId int) {
+	os.Remove(socketPath)
+	log("InitMetricsCollector: %s (uid: %d, gid: %d)", socketPath, userId, groupId)
+	l, err := net.Listen("unix", socketPath)
 	if err != nil {
 		log("listen error: %s", err.Error())
+		return
+	}
+	err = os.Chown(socketPath, userId, groupId)
+	if err != nil {
+		log("cannot chown metricssocket: %s", err.Error())
+		return
 	}
 	listener = &l
 	defer func() {
@@ -82,7 +94,7 @@ func startMetricServer() {
 		}
 	}()
 
-	log("listening on metricsSocket: %s", metricsSocket)
+	log("listening on metricsSocket: %s", socketPath)
 	for {
 		conn, err := l.Accept()
 		if err != nil {

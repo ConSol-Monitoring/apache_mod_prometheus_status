@@ -6,6 +6,7 @@
 #include "mod_prometheus_status_go.h"
 
 extern apr_hash_t *log_hash;
+extern unixd_config_rec ap_unixd_config;
 
 #define SERVER_DISABLED SERVER_NUM_STATUS
 #define MOD_STATUS_NUM_STATUS (SERVER_NUM_STATUS+1)
@@ -340,6 +341,8 @@ static int prometheus_status_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *p
     metric_socket = (*prometheusStatusInitFn)(
         ap_get_server_description(),
         s,
+        ap_unixd_config.user_id,
+        ap_unixd_config.group_id,
         config.label_names,
         mpm_name,
         defaultSocketTimeout,
@@ -365,6 +368,7 @@ static void prometheus_status_register_hooks(apr_pool_t *p) {
     config.label_names  = "method;status";
     config.time_buckets = "0.01;0.1;1;10;30";
     config.size_buckets = "1000;10000;100000;1000000;10000000;100000000";
+    config.tmp_folder   = "";
     strcpy(config.label_values, "%m;%s");
 
     log_hash = apr_hash_make(p);

@@ -10,6 +10,7 @@
 #include "http_config.h"
 #include "http_protocol.h"
 #include "mpm_common.h"
+#include "unixd.h"
 #include "mod_log_config.h"
 #include <unistd.h>
 #include <dlfcn.h>
