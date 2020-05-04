@@ -1,5 +1,9 @@
+#!/usr/bin/make -f
+
 # Makefile for mod_prometheus_status.c
 
+MAKE:=make
+SHELL:=bash
 APXS=./apxs.sh
 WRAPPER_SOURCE=src/mod_prometheus_status.c src/mod_prometheus_status_format.c
 WRAPPER_HEADER=src/mod_prometheus_status.h
@@ -22,6 +26,10 @@ DISTFILES=\
 	README.md \
 	Makefile
 
+GOVERSION:=$(shell \
+    go version | \
+    awk -F'go| ' '{ split($$5, a, /\./); printf ("%04d%04d", a[1], a[2]); exit; }' \
+)
 MINGOVERSION:=00010012
 MINGOVERSIONSTR:=1.12
 
@@ -35,7 +43,7 @@ endif
 
 .PHONY: vendor
 
-all: build
+all: fmt build
 
 build: mod_prometheus_status.so
 
@@ -47,7 +55,7 @@ clean:
 	rm -rf *.so src/.libs/ src/*.la src/*.lo src/*.slo mod_prometheus_status_go.h
 	-$(MAKE) -C t clean
 
-test:
+test: citest
 	$(MAKE) -C t test
 
 testbox_centos8:
@@ -116,6 +124,48 @@ tools: versioncheck dump
 		go get $$DEP; \
 	done
 	go mod tidy
+
+citest:
+	#
+	# Checking gofmt errors
+	#
+	if [ $$(cd $(GO_SRC_DIR) && gofmt -s -l . | wc -l) -gt 0 ]; then \
+		echo "found format errors in these files:"; \
+		cd $(GO_SRC_DIR) && gofmt -s -l .; \
+		exit 1; \
+	fi
+	#
+	# Checking TODO items
+	#
+	if grep -rn TODO: cmd/ src/; then exit 1; fi
+	#
+	# Checking remaining debug calls
+	#
+	if grep -rn Dump lmd/*.go | grep -v dump.go; then exit 1; fi
+	#
+	# Run other subtests
+	#
+	$(MAKE) golangci
+	$(MAKE) fmt
+	#
+	# Normal test cases
+	#
+	cd $(GO_SRC_DIR) && go test -v
+	#
+	# Benchmark tests
+	#
+	cd $(GO_SRC_DIR) && go test -v -bench=B\* -run=^$$ . -benchmem
+	#
+	# All CI tests successfull
+	#
+	go mod tidy
+
+golangci: tools
+	#
+	# golangci combines a few static code analyzer
+	# See https://github.com/golangci/golangci-lint
+	#
+	golangci-lint run $(GO_SRC_DIR)/...
 
 mod_prometheus_status.so: mod_prometheus_status_go.so $(WRAPPER_SOURCE)
 	$(APXS) -c -n $@ -I. $(LIBS) $(WRAPPER_SOURCE)

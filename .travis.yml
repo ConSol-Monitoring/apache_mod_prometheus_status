@@ -1,0 +1,26 @@
+language: generic
+dist: bionic
+sudo: required
+services:
+  - docker
+addons:
+  apt:
+    packages:
+    - apache2-dev
+    - software-properties-common
+    - make
+    - gcc
+
+before_install:
+  - sudo add-apt-repository -y ppa:longsleep/golang-backports
+  - sudo apt-get install -y golang-go
+
+install:
+  - make
+
+script:
+  -  make test
+
+notifications:
+  email:
+    - sven@nierlein.de

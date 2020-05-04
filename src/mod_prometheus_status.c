@@ -16,6 +16,7 @@ static int server_limit, thread_limit, threads_per_child, max_servers;
 typedef struct {
     char                context[4096];
     /* server level options */
+    int                 debug;              /* Enable debug logging */
     const char         *label_names;        /* Set custom label names */
     const char         *time_buckets;       /* raw response time buckets */
     const char         *size_buckets;       /* raw response size buckets */
@@ -35,6 +36,12 @@ char* (*prometheusStatusInitFn)() = NULL;
 char *metric_socket = NULL;
 int golang_proc_pid = 0;
 int metric_socket_fd = 0;
+
+/* Handler for the "PrometheusStatusDebug" directive */
+const char *prometheus_status_set_debug(cmd_parms *cmd, void *cfg, int val) {
+    config.debug = val;
+    return NULL;
+}
 
 /* Handler for the "PrometheusStatusEnabled" directive */
 const char *prometheus_status_set_enabled(cmd_parms *cmd, void *cfg, int val) {
@@ -86,7 +93,7 @@ static int prometheus_status_open_communication_socket() {
     strcpy(addr.sun_path, metric_socket);
     metric_socket_fd = socket(PF_UNIX, SOCK_STREAM, 0);
     if(connect(metric_socket_fd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
-        log("failed to open metrics socket at %s: %s", metric_socket, strerror(errno));
+        logErrorf("failed to open metrics socket at %s: %s", metric_socket, strerror(errno));
         return(FALSE);
     }
 
@@ -95,12 +102,12 @@ static int prometheus_status_open_communication_socket() {
     timeout.tv_usec = 0;
 
     if(setsockopt(metric_socket_fd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout)) < 0) {
-        log("setsockopt failed: %s", strerror(errno));
+        logErrorf("setsockopt failed: %s", strerror(errno));
         return(FALSE);
     }
 
     if(setsockopt(metric_socket_fd, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout, sizeof(timeout)) < 0) {
-        log("setsockopt failed: %s", strerror(errno));
+        logErrorf("setsockopt failed: %s", strerror(errno));
         return(FALSE);
     }
 
@@ -134,7 +141,7 @@ static int prometheus_status_send_communication_socket(const char *fmt, ...) {
     nbytes = vsnprintf(buffer, 4096, fmt, ap);
     va_end(ap);
     if(write(metric_socket_fd, buffer, nbytes) == -1) {
-        log("failed to send to metrics collector at %s: %s", metric_socket, strerror(errno));
+        logErrorf("failed to send to metrics collector at %s: %s", metric_socket, strerror(errno));
     }
     return(TRUE);
 }
@@ -303,7 +310,7 @@ static int prometheus_status_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *p
     /* cache main server */
     main_server = s;
 
-    log("prometheus_status_init version %s", VERSION);
+    logDebugf("prometheus_status_init version %s", VERSION);
 
     ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &thread_limit);
     ap_mpm_query(AP_MPMQ_HARD_LIMIT_DAEMONS, &server_limit);
@@ -327,11 +334,11 @@ static int prometheus_status_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *p
 
         go_module_handle = dlopen(go_so_path, RTLD_LAZY);
         if(!go_module_handle) {
-            log("loading %s failed: %s\n", go_so_path, dlerror());
+            logErrorf("loading %s failed: %s\n", go_so_path, dlerror());
             exit(1);
         }
     }
-    log("prometheus_status_init gomodule loaded");
+    logDebugf("prometheus_status_init gomodule loaded");
 
     golang_proc_pid = getpid();
 
@@ -340,7 +347,9 @@ static int prometheus_status_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *p
     // run go initializer
     metric_socket = (*prometheusStatusInitFn)(
         ap_get_server_description(),
-        s,
+        s->server_hostname,
+        VERSION,
+        config.debug,
         ap_unixd_config.user_id,
         ap_unixd_config.group_id,
         config.label_names,
@@ -351,10 +360,9 @@ static int prometheus_status_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *p
         config.size_buckets
     );
     if(!strcmp(metric_socket, "")) {
-        log("mod_prometheus_status initializing failed");
+        logErrorf("mod_prometheus_status initializing failed");
         exit(1);
     }
-    log("mod_prometheus_status initialized: %s", metric_socket);
 
     apr_pool_cleanup_register(p, NULL, prometheus_status_cleanup_handler, apr_pool_cleanup_null);
     return OK;
@@ -362,9 +370,10 @@ static int prometheus_status_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *p
 
 /* prometheus_status_register_hooks registers all required hooks */
 static void prometheus_status_register_hooks(apr_pool_t *p) {
-    log("prometheus_status_register_hooks: %s\n", __FILE__);
+    logDebugf("prometheus_status_register_hooks: %s\n", __FILE__);
     const char *err_string = NULL;
     // set defaults
+    config.debug        = 0;
     config.label_names  = "method;status";
     config.time_buckets = "0.01;0.1;1;10;30";
     config.size_buckets = "1000;10000;100000;1000000;10000000;100000000";
@@ -375,7 +384,7 @@ static void prometheus_status_register_hooks(apr_pool_t *p) {
     prometheus_status_register_all_log_handler(p);
     config.label_format = parse_log_string(p, config.label_values, &err_string);
     if(err_string != NULL) {
-        log("failed to parse label values: %s\n", err_string);
+        logErrorf("failed to parse label values: %s\n", err_string);
         exit(1);
     }
 
@@ -418,6 +427,7 @@ void *prometheus_status_create_server_conf(apr_pool_t *pool, server_rec *s) {
 /* available configuration directives */
 static const command_rec prometheus_status_directives[] = {
     /* server level */
+    AP_INIT_FLAG("PrometheusStatusDebug",                   prometheus_status_set_debug,         NULL, RSRC_CONF, "Set to On to debug output."),
     AP_INIT_RAW_ARGS("PrometheusStatusLabelNames",          prometheus_status_set_label_names,   NULL, RSRC_CONF, "Set a request specific label names from within apache directives."),
     AP_INIT_RAW_ARGS("PrometheusStatusTmpFolder",           prometheus_status_set_tmp_folder,    NULL, RSRC_CONF, "Set folder for communication socket."),
     AP_INIT_RAW_ARGS("PrometheusStatusResponseTimeBuckets", prometheus_status_set_time_buckets,  NULL, RSRC_CONF, "Set response time histogram buckets."),

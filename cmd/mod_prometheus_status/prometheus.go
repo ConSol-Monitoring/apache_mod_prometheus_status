@@ -11,7 +11,7 @@ import (
 
 var (
 	registry   = prometheus.NewRegistry()
-	collectors = make(map[string]interface{}, 0)
+	collectors = make(map[string]interface{})
 )
 
 var labelCount = 0
@@ -152,7 +152,7 @@ func metricsGet() []byte {
 	var buf bytes.Buffer
 	gathering, err := registry.Gather()
 	if err != nil {
-		log("internal prometheus error: %s", err.Error())
+		logErrorf("internal prometheus error: %s", err.Error())
 		return (buf.Bytes())
 	}
 	for _, m := range gathering {
@@ -179,7 +179,7 @@ func metricsUpdate(metricsType int, data string) {
 
 	collector, ok := collectors[name]
 	if !ok {
-		log("unknown metric: %s", name)
+		logErrorf("unknown metric: %s", name)
 		return
 	}
 	switch col := collector.(type) {
@@ -194,7 +194,7 @@ func metricsUpdate(metricsType int, data string) {
 	case *prometheus.HistogramVec:
 		col.WithLabelValues(label...).Observe(val)
 	default:
-		log("unknown type: %T from metric %s", col, data)
+		logErrorf("unknown type: %T from metric %s", col, data)
 	}
 }
 

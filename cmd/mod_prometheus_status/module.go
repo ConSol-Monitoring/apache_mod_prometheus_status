@@ -29,23 +29,24 @@ const (
 	RequestMetrics
 )
 
-// TODO: make this build option
-var EnableDebug = "1"
+// Build contains the current git commit id
+// compile passing -ldflags "-X main.Build=<build sha1>" to set the id.
+var Build string
+
 var metricsSocket = ""
 var listener *net.Listener
 var defaultSocketTimeout = 1
 
 //export prometheusStatusInit
-func prometheusStatusInit(serverDesc *C.char, rptr uintptr, userId, groupId C.int, labelNames *C.char, mpmName *C.char, socketTimeout int, tmpFolder, timeBuckets, sizeBuckets *C.char) unsafe.Pointer {
-	serverRec := (*C.server_rec)(unsafe.Pointer(rptr))
+func prometheusStatusInit(serverDesc *C.char, serverHostName, version *C.char, debug, userID, groupID C.int, labelNames *C.char, mpmName *C.char, socketTimeout int, tmpFolder, timeBuckets, sizeBuckets *C.char) unsafe.Pointer {
 	defaultSocketTimeout = socketTimeout
 
 	// avoid double initializing
 	if metricsSocket == "" {
-		initLogging()
-		err := registerMetrics(C.GoString(serverDesc), C.GoString(serverRec.server_hostname), C.GoString(labelNames), C.GoString(mpmName), C.GoString(timeBuckets), C.GoString(sizeBuckets))
+		initLogging(int(debug))
+		err := registerMetrics(C.GoString(serverDesc), C.GoString(serverHostName), C.GoString(labelNames), C.GoString(mpmName), C.GoString(timeBuckets), C.GoString(sizeBuckets))
 		if err != nil {
-			log("failed to initialize metrics: %s", err.Error())
+			logErrorf("failed to initialize metrics: %s", err.Error())
 			return unsafe.Pointer(C.CString(""))
 		}
 		tmpdir := ""
@@ -54,47 +55,51 @@ func prometheusStatusInit(serverDesc *C.char, rptr uintptr, userId, groupId C.in
 		}
 		tmpfile, err := ioutil.TempFile(tmpdir, "metrics.*.sock")
 		if err != nil {
-			log("failed to get tmpfile: %s", err.Error())
+			logErrorf("failed to get tmpfile: %s", err.Error())
 			return unsafe.Pointer(C.CString(""))
 		}
 		metricsSocket = tmpfile.Name()
 	} else {
 		// close old server
-		log("prometheusStatusInit closing old listener")
+		logDebugf("prometheusStatusInit closing old listener")
 		if listener != nil {
 			(*listener).Close()
 			listener = nil
 		}
 	}
-	go startMetricServer(metricsSocket, int(userId), int(groupId))
-	// TODO: wait till socket started
+	startChannel := make(chan bool)
+	go startMetricServer(startChannel, metricsSocket, int(userID), int(groupID))
+	<-startChannel
 
-	log("prometheusStatusInit: %d", os.Getpid())
+	logInfof("mod_prometheus_status v%s initialized - socket:%s - uid:%d - gid:%d - build:%s", C.GoString(version), metricsSocket, userID, groupID, Build)
 	return unsafe.Pointer(C.CString(metricsSocket))
 }
 
-func startMetricServer(socketPath string, userId, groupId int) {
-	os.Remove(socketPath)
-	log("InitMetricsCollector: %s (uid: %d, gid: %d)", socketPath, userId, groupId)
-	l, err := net.Listen("unix", socketPath)
-	if err != nil {
-		log("listen error: %s", err.Error())
-		return
-	}
-	err = os.Chown(socketPath, userId, groupId)
-	if err != nil {
-		log("cannot chown metricssocket: %s", err.Error())
-		return
-	}
-	listener = &l
+func startMetricServer(startChannel chan bool, socketPath string, userID, groupID int) {
 	defer func() {
 		if listener != nil {
 			(*listener).Close()
 			listener = nil
 		}
 	}()
+	os.Remove(socketPath)
+	logDebugf("InitMetricsCollector: %s (uid: %d, gid: %d)", socketPath, userID, groupID)
+	l, err := net.Listen("unix", socketPath)
+	if err != nil {
+		logErrorf("listen error: %s", err.Error())
+		startChannel <- false
+		return
+	}
+	err = os.Chown(socketPath, userID, groupID)
+	if err != nil {
+		logErrorf("cannot chown metricssocket: %s", err.Error())
+		startChannel <- false
+		return
+	}
+	listener = &l
 
-	log("listening on metricsSocket: %s", socketPath)
+	logDebugf("listening on metricsSocket: %s", socketPath)
+	startChannel <- true
 	for {
 		conn, err := l.Accept()
 		if err != nil {
@@ -125,7 +130,7 @@ func metricServer(c net.Conn) {
 		case "metrics":
 			_, err = c.Write(metricsGet())
 			if err != nil {
-				log("Writing client error: %s", err.Error())
+				logErrorf("Writing client error: %s", err.Error())
 				return
 			}
 			return
