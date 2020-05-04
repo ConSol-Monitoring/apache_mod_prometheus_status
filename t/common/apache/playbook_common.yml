@@ -15,23 +15,17 @@
   file:
     src: /src/t/common/apache/apache.conf
     dest: /omd/sites/demo/etc/apache/conf.d/prom.conf
-    owner: demo
-    group: demo
     state: link
 - shell: sudo su - demo -c "/src/t/common/apache/build.sh"
 - name: enable build watcher
   file:
     src: /src/t/common/apache/build_watcher.init
     dest: /omd/sites/demo/etc/init.d/build_watcher
-    owner: demo
-    group: demo
     state: link
 - name: enable build watcher
   file:
     src: ../init.d/build_watcher
     dest: /omd/sites/demo/etc/rc.d/10-build_watcher
-    owner: demo
-    group: demo
     state: link
 - shell: sudo su - demo -c "rm -f etc/init-hooks.d/apache-*"
 
