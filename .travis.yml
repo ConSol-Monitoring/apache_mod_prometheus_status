@@ -1,4 +1,4 @@
-language: generic
+language: go
 dist: bionic
 os: linux
 services:
