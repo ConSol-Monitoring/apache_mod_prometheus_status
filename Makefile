@@ -101,7 +101,7 @@ versioncheck:
 	@[ $$( printf '%s\n' $(GOVERSION) $(MINGOVERSION) | sort | head -n 1 ) = $(MINGOVERSION) ] || { \
 		echo "**** ERROR:"; \
 		echo "**** build requires at least golang version $(MINGOVERSIONSTR) or higher"; \
-		echo "**** this is: $$(go version)"; \
+		echo "**** this is: $$(go version) from $$(type go)"; \
 		exit 1; \
 	}
 

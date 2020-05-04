@@ -12,6 +12,7 @@ addons:
     - gcc
 
 before_install:
+  - sudo apt-get -y purge golang
   - sudo add-apt-repository -y ppa:longsleep/golang-backports
   - sudo apt-get install -y golang-go
 
