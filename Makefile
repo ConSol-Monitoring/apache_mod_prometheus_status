@@ -81,9 +81,9 @@ vendor:
 	go mod vendor
 
 dist:
-	mv build_tools/tools.go build_tools/tools.go.off
+	mv buildtools/tools.go buildtools/tools.go.off
 	go mod vendor
-	mv build_tools/tools.go.off build_tools/tools.go
+	mv buildtools/tools.go.off buildtools/tools.go
 	mv cmd/mod_prometheus_status/dump.go .
 	echo "package main" > cmd/mod_prometheus_status/dump.go
 	tar --transform 's,^,./$(NAME)-$(VERSION)/,g' -cf $(NAME)-$(VERSION).tar $(DISTFILES)
