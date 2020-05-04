@@ -213,7 +213,7 @@ Some useful ressources during development:
 ## Changes
 
 ```
-next:
+0.0.4   Mon May  4 10:28:17 CEST 2020
           - add example grafana dashboard
           - add new apache directives:
             - PrometheusStatusTmpFolder
