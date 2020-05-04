@@ -9,14 +9,15 @@ import (
 	"github.com/prometheus/common/expfmt"
 )
 
-var (
-	registry   = prometheus.NewRegistry()
-	collectors = make(map[string]interface{})
-)
-
+var registry *prometheus.Registry
+var collectors = make(map[string]interface{})
 var labelCount = 0
 
 func registerMetrics(serverDesc, serverName, labelNames, mpmName, timeBuckets, sizeBuckets string) (err error) {
+	if registry != nil {
+		return
+	}
+	registry = prometheus.NewRegistry()
 	requestLabels := make([]string, 0)
 	labelNames = strings.TrimSpace(labelNames)
 	if labelNames != "" {

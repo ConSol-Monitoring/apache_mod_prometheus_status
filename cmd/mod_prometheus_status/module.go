@@ -41,32 +41,33 @@ var defaultSocketTimeout = 1
 func prometheusStatusInit(serverDesc *C.char, serverHostName, version *C.char, debug, userID, groupID C.int, labelNames *C.char, mpmName *C.char, socketTimeout int, tmpFolder, timeBuckets, sizeBuckets *C.char) unsafe.Pointer {
 	defaultSocketTimeout = socketTimeout
 
-	// avoid double initializing
+	initLogging(int(debug))
+
+	err := registerMetrics(C.GoString(serverDesc), C.GoString(serverHostName), C.GoString(labelNames), C.GoString(mpmName), C.GoString(timeBuckets), C.GoString(sizeBuckets))
+	if err != nil {
+		logErrorf("failed to initialize metrics: %s", err.Error())
+		return unsafe.Pointer(C.CString(""))
+	}
+
 	if metricsSocket == "" {
-		initLogging(int(debug))
-		err := registerMetrics(C.GoString(serverDesc), C.GoString(serverHostName), C.GoString(labelNames), C.GoString(mpmName), C.GoString(timeBuckets), C.GoString(sizeBuckets))
-		if err != nil {
-			logErrorf("failed to initialize metrics: %s", err.Error())
-			return unsafe.Pointer(C.CString(""))
-		}
 		tmpdir := ""
 		if tmpFolder != nil {
 			tmpdir = C.GoString(tmpFolder)
 		}
-		tmpfile, err := ioutil.TempFile(tmpdir, "metrics.*.sock")
+		err := setMetricsSocket(tmpdir)
 		if err != nil {
 			logErrorf("failed to get tmpfile: %s", err.Error())
 			return unsafe.Pointer(C.CString(""))
 		}
-		metricsSocket = tmpfile.Name()
-	} else {
-		// close old server
-		logDebugf("prometheusStatusInit closing old listener")
-		if listener != nil {
-			(*listener).Close()
-			listener = nil
-		}
 	}
+
+	// close old server
+	if listener != nil {
+		logDebugf("prometheusStatusInit closing old listener")
+		(*listener).Close()
+		listener = nil
+	}
+
 	startChannel := make(chan bool)
 	go startMetricServer(startChannel, metricsSocket, int(userID), int(groupID))
 	<-startChannel
@@ -140,6 +141,15 @@ func metricServer(c net.Conn) {
 			metricsUpdate(RequestMetrics, args[1])
 		}
 	}
+}
+
+func setMetricsSocket(tmpFolder string) (err error) {
+	tmpfile, err := ioutil.TempFile(tmpFolder, "metrics.*.sock")
+	if err != nil {
+		return
+	}
+	metricsSocket = tmpfile.Name()
+	return
 }
 
 func main() {}

@@ -29,11 +29,14 @@ const (
 	LogVerbosityError = 4
 )
 
-// initialize standard logger which will be configured later from the configuration file options
+// initialize standard logger which will be configured later from the configuration file options.
 var logger *factorlog.FactorLog
 
 // initLogging initializes the logging system.
 func initLogging(enableDebug int) {
+	if logger != nil {
+		return
+	}
 	logger = factorlog.New(os.Stderr, factorlog.NewStdFormatter(LogColors+LogFormat+LogColorReset))
 
 	logger.SetVerbosity(LogVerbosityDebug)

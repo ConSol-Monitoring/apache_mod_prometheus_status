@@ -37,6 +37,7 @@ linters:
     - goconst
     - interfacer
     - wsl
+    - godot
   fast: false
 issues:
   max-same-issues: 0
