@@ -44,7 +44,7 @@ endif
 
 .PHONY: vendor
 
-all: fmt build
+all: build
 
 build: mod_prometheus_status.so
 
@@ -56,7 +56,7 @@ clean:
 	rm -rf *.so src/.libs/ src/*.la src/*.lo src/*.slo mod_prometheus_status_go.h
 	-$(MAKE) -C t clean
 
-test: citest
+test: citest releasetest
 	$(MAKE) -C t test
 
 testbox_centos8:
@@ -82,6 +82,7 @@ vendor:
 	go mod vendor
 
 dist:
+	rm -f $(NAME)-$(VERSION).tar.gz
 	mv buildtools/tools.go buildtools/tools.go.off
 	go mod vendor
 	mv buildtools/tools.go.off buildtools/tools.go
@@ -93,10 +94,16 @@ dist:
 	go mod vendor
 
 releasetarball: clean build
+	rm -f $(RELEASENAME).tar.gz
 	tar --transform 's,^,./$(RELEASENAME)/,g' -cf $(RELEASENAME).tar *.so example_apache.conf README.md LICENSE
 	gzip -9 $(RELEASENAME).tar
 
 release: releasetarball dist
+
+releasetest: release
+	tar zxf $(NAME)-$(VERSION).tar.gz
+	cd $(NAME)-$(VERSION) && make
+	rm -rf $(NAME)-$(VERSION)
 
 versioncheck:
 	@[ $$( printf '%s\n' $(GOVERSION) $(MINGOVERSION) | sort | head -n 1 ) = $(MINGOVERSION) ] || { \
