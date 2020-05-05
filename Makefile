@@ -98,9 +98,9 @@ releasetarball: clean build
 	tar --transform 's,^,./$(RELEASENAME)/,g' -cf $(RELEASENAME).tar *.so example_apache.conf README.md LICENSE
 	gzip -9 $(RELEASENAME).tar
 
-release: releasetarball dist
+release: releasetest
 
-releasetest: release
+releasetest: releasetarball dist
 	tar zxf $(NAME)-$(VERSION).tar.gz
 	cd $(NAME)-$(VERSION) && make
 	rm -rf $(NAME)-$(VERSION)
