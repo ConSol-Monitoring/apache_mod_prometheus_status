@@ -18,6 +18,7 @@ DISTFILES=\
 	$(GO_SOURCES) \
 	$(WRAPPER_SOURCE) \
 	$(WRAPPER_HEADER) \
+	buildtools/ \
 	example_apache.conf \
 	go.* \
 	vendor \
