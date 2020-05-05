@@ -99,6 +99,11 @@ releasetarball: clean build
 	gzip -9 $(RELEASENAME).tar
 
 release: releasetest
+	@echo "***************************************"
+	@echo "release tarballs created:"
+	@echo " - $(RELEASENAME).tar.gz"
+	@echo " - $(NAME)-$(VERSION).tar.gz"
+	@echo "***************************************"
 
 releasetest: releasetarball dist
 	tar zxf $(NAME)-$(VERSION).tar.gz
