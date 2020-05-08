@@ -19,7 +19,7 @@
 
 module AP_MODULE_DECLARE_DATA prometheus_status_module;
 
-#define defaultSocketTimeout 1
+#define defaultSocketTimeout 3
 
 /* global logger */
 #define logDebugf(_fmt, ...) if(main_server != NULL && config.debug > 0) {\

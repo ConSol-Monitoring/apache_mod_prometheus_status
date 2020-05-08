@@ -25,7 +25,10 @@ import (
 )
 
 const (
+	// ServerMetrics have different labels as RequestMetrics and are used on server level
 	ServerMetrics int = iota
+
+	// RequestMetrics are used to gather request specific metrics
 	RequestMetrics
 )
 
@@ -119,8 +122,12 @@ func metricServer(c net.Conn) {
 
 	for {
 		line, err := buf.ReadString('\n')
-		if err == io.EOF {
-			break
+		if err != nil {
+			if err == io.EOF {
+				return
+			}
+			logErrorf("Reading client error: %s", err.Error())
+			return
 		}
 		line = strings.TrimSpace(line)
 		if line == "" {

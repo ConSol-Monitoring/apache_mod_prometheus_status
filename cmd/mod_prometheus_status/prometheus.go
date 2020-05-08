@@ -159,6 +159,7 @@ func metricsGet() []byte {
 	for _, m := range gathering {
 		expfmt.MetricFamilyToText(&buf, m)
 	}
+	buf.WriteString("\n\n")
 	return (buf.Bytes())
 }
 

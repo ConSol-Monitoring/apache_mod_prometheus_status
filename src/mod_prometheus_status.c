@@ -87,13 +87,14 @@ const char *prometheus_status_set_label_values(cmd_parms *cmd, void *cfg, const 
 static int prometheus_status_open_communication_socket() {
     struct sockaddr_un addr;
     addr.sun_family = AF_UNIX;
+    // reuse if already open
     if(metric_socket_fd != 0) {
         return(TRUE);
     }
     strcpy(addr.sun_path, metric_socket);
     metric_socket_fd = socket(PF_UNIX, SOCK_STREAM, 0);
     if(connect(metric_socket_fd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
-        logErrorf("failed to open metrics socket at %s: %s", metric_socket, strerror(errno));
+        logErrorf("failed to open metrics socket: socket:%s fd:%d errno:%d (%s)", metric_socket, metric_socket_fd, errno, strerror(errno));
         return(FALSE);
     }
 
@@ -101,13 +102,13 @@ static int prometheus_status_open_communication_socket() {
     timeout.tv_sec  = defaultSocketTimeout;
     timeout.tv_usec = 0;
 
-    if(setsockopt(metric_socket_fd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout)) < 0) {
-        logErrorf("setsockopt failed: %s", strerror(errno));
+    if(setsockopt(metric_socket_fd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout)) == -1) {
+        logErrorf("setsockopt failed: socket:%s fd:%d errno:%d (%s)", metric_socket, metric_socket_fd, errno, strerror(errno));
         return(FALSE);
     }
 
-    if(setsockopt(metric_socket_fd, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout, sizeof(timeout)) < 0) {
-        logErrorf("setsockopt failed: %s", strerror(errno));
+    if(setsockopt(metric_socket_fd, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout, sizeof(timeout)) == -1) {
+        logErrorf("setsockopt failed: socket:%s fd:%d errno:%d (%s)", metric_socket, metric_socket_fd, errno, strerror(errno));
         return(FALSE);
     }
 
@@ -140,8 +141,10 @@ static int prometheus_status_send_communication_socket(const char *fmt, ...) {
     va_start(ap, fmt);
     nbytes = vsnprintf(buffer, 4096, fmt, ap);
     va_end(ap);
-    if(write(metric_socket_fd, buffer, nbytes) == -1) {
-        logErrorf("failed to send to metrics collector at %s: %s", metric_socket, strerror(errno));
+
+    if(write(metric_socket_fd, buffer, nbytes) < 0) {
+        logErrorf("failed to send to metrics collector: socket:%s fd:%d errno:%d (%s)", metric_socket, metric_socket_fd, errno, strerror(errno));
+        prometheus_status_close_communication_socket();
     }
     return(TRUE);
 }
@@ -229,7 +232,7 @@ static int prometheus_status_monitor() {
 /* prometheus_status_handler responds to /metrics requests */
 static int prometheus_status_handler(request_rec *r) {
     int nbytes;
-    char buffer[4096];
+    char buffer[32768];
 
     // is the module enabled at all?
     prometheus_status_config *config = (prometheus_status_config*) ap_get_module_config(r->server->module_config, &prometheus_status_module);
@@ -248,12 +251,25 @@ static int prometheus_status_handler(request_rec *r) {
     ap_set_content_type(r, "text/plain");
 
     if(!prometheus_status_send_communication_socket("metrics\n")) {
-        return(OK);
+        ap_rputs("ERROR: failed fetch metrics\n", r);
+        return(HTTP_INTERNAL_SERVER_ERROR);
     }
 
-    while((nbytes = read(metric_socket_fd, buffer, 4095)) > 1) {
+    while((nbytes = read(metric_socket_fd, buffer, 32768)) > 0) {
+        if(nbytes < 0) {
+            logErrorf("reading metrics failed: socket:%s fd:%d errno:%d (%s)", metric_socket, metric_socket_fd, errno, strerror(errno));
+            ap_rputs("ERROR: failed fetch metrics\n", r);
+            return(HTTP_INTERNAL_SERVER_ERROR);
+        }
+        if(nbytes == 0) {
+            break;
+        }
         buffer[nbytes] = 0;
         ap_rputs(buffer, r);
+        // double newline at the end means EOF
+        if(nbytes > 3 && buffer[nbytes-1] == '\n' && buffer[nbytes-2] == '\n') {
+            break;
+        }
     }
 
     prometheus_status_close_communication_socket();
