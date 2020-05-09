@@ -146,6 +146,9 @@ func metricServer(c net.Conn) {
 			metricsUpdate(ServerMetrics, args[1])
 		case "request":
 			metricsUpdate(RequestMetrics, args[1])
+		default:
+			logErrorf("unknown metrics update request: %s", args[0])
+			return
 		}
 	}
 }

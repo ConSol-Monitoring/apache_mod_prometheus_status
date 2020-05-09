@@ -139,6 +139,20 @@ So far this modules supports the following metrics:
 ```
   # HELP apache_cpu_load CPU Load 1
   # TYPE apache_cpu_load gauge
+  # TYPE apache_process_counter gauge
+  # HELP apache_process_counter number of apache processes
+  # TYPE apache_process_total_io_read_bytes gauge
+  # HELP apache_process_total_io_read_bytes total read bytes over all apache processes
+  # TYPE apache_process_total_io_write_bytes gauge
+  # HELP apache_process_total_io_write_bytes total write bytes over all apache processes
+  # TYPE apache_process_total_open_fd gauge
+  # HELP apache_process_total_open_fd total open file handles over all apache processes
+  # TYPE apache_process_total_rss_memory_bytes gauge
+  # HELP apache_process_total_rss_memory_bytes total rss bytes over all apache processes
+  # TYPE apache_process_total_threads gauge
+  # HELP apache_process_total_threads total number of threads over all apache processes
+  # TYPE apache_process_total_virt_memory_bytes gauge
+  # HELP apache_process_total_virt_memory_bytes total virt bytes over all apache processes
   # TYPE apache_requests_total counter
   # HELP apache_requests_total is the total number of http requests
   # TYPE apache_response_size_bytes histogram
@@ -205,12 +219,14 @@ Some useful ressources during development:
 
 ## Roadmap
 
-  - [ ] add memory metrics
   - [ ] add trimmable path label, ex.: %{p:1:2} which uses 2 directories levels, starting at the first level
 
 ## Changes
 
 ```
+next:
+          - add process memory/counter/io metrics
+
 0.0.4   Mon May  4 10:28:17 CEST 2020
           - add example grafana dashboard
           - add new apache directives:

@@ -2,16 +2,36 @@ package main
 
 import (
 	"bytes"
+	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/expfmt"
+	"github.com/shirou/gopsutil/process"
 )
 
 var registry *prometheus.Registry
 var collectors = make(map[string]interface{})
 var labelCount = 0
+
+const (
+	// ProcUpdateInterval set the minimum update interval in seconds for proc statistics
+	ProcUpdateInterval int64 = 3
+)
+
+var lastProcUpdate int64
+
+type procUpdate struct {
+	Total      int
+	Threads    int
+	OpenFD     int
+	RSS        uint64
+	VMS        uint64
+	ReadBytes  uint64
+	WriteBytes uint64
+}
 
 func registerMetrics(serverDesc, serverName, labelNames, mpmName, timeBuckets, sizeBuckets string) (err error) {
 	if registry != nil {
@@ -106,6 +126,77 @@ func registerMetrics(serverDesc, serverName, labelNames, mpmName, timeBuckets, s
 	registry.MustRegister(promScoreboard)
 	collectors["promScoreboard"] = promScoreboard
 
+	/* process related metrics */
+	promProcessCounter := prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Namespace: "apache",
+			Name:      "process_counter",
+			Help:      "number of apache processes",
+		})
+	registry.MustRegister(promProcessCounter)
+	promProcessCounter.Set(0)
+	collectors["promProcCounter"] = promProcessCounter
+
+	promThreads := prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Namespace: "apache",
+			Name:      "process_total_threads",
+			Help:      "total number of threads over all apache processes",
+		})
+	registry.MustRegister(promThreads)
+	promThreads.Set(0)
+	collectors["promThreads"] = promThreads
+
+	promMemoryReal := prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Namespace: "apache",
+			Name:      "process_total_rss_memory_bytes",
+			Help:      "total rss bytes over all apache processes",
+		})
+	registry.MustRegister(promMemoryReal)
+	promMemoryReal.Set(0)
+	collectors["promMemoryReal"] = promMemoryReal
+
+	promMemoryVirt := prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Namespace: "apache",
+			Name:      "process_total_virt_memory_bytes",
+			Help:      "total virt bytes over all apache processes",
+		})
+	registry.MustRegister(promMemoryVirt)
+	promMemoryVirt.Set(0)
+	collectors["promMemoryVirt"] = promMemoryVirt
+
+	promReadBytes := prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Namespace: "apache",
+			Name:      "process_total_io_read_bytes",
+			Help:      "total read bytes over all apache processes",
+		})
+	registry.MustRegister(promReadBytes)
+	promReadBytes.Set(0)
+	collectors["promReadBytes"] = promReadBytes
+
+	promWriteBytes := prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Namespace: "apache",
+			Name:      "process_total_io_write_bytes",
+			Help:      "total write bytes over all apache processes",
+		})
+	registry.MustRegister(promWriteBytes)
+	promWriteBytes.Set(0)
+	collectors["promWriteBytes"] = promWriteBytes
+
+	promOpenFD := prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Namespace: "apache",
+			Name:      "process_total_open_fd",
+			Help:      "total open file handles over all apache processes",
+		})
+	registry.MustRegister(promOpenFD)
+	promOpenFD.Set(0)
+	collectors["promOpenFD"] = promOpenFD
+
 	/* request related metrics */
 	promRequests := prometheus.NewCounterVec(
 		prometheus.CounterOpts{
@@ -150,6 +241,11 @@ func registerMetrics(serverDesc, serverName, labelNames, mpmName, timeBuckets, s
 }
 
 func metricsGet() []byte {
+	now := time.Now().Unix()
+	if now-lastProcUpdate > ProcUpdateInterval {
+		lastProcUpdate = now
+		updateProcMetrics()
+	}
 	var buf bytes.Buffer
 	gathering, err := registry.Gather()
 	if err != nil {
@@ -161,6 +257,69 @@ func metricsGet() []byte {
 	}
 	buf.WriteString("\n\n")
 	return (buf.Bytes())
+}
+
+// updateProcMetrics updates memory statistics for all children with match httpd/apache in its cmdline
+func updateProcMetrics() {
+	stats := &procUpdate{}
+
+	pid := os.Getppid()
+	if pid == 1 {
+		pid = os.Getpid()
+	}
+	mainProcess, _ := process.NewProcess(int32(pid))
+	countProcStats(mainProcess, stats)
+
+	collectors["promProcCounter"].(prometheus.Gauge).Set(float64(stats.Total))
+	collectors["promThreads"].(prometheus.Gauge).Set(float64(stats.Threads))
+	collectors["promOpenFD"].(prometheus.Gauge).Set(float64(stats.OpenFD))
+	collectors["promMemoryReal"].(prometheus.Gauge).Set(float64(stats.RSS))
+	collectors["promMemoryVirt"].(prometheus.Gauge).Set(float64(stats.VMS))
+	collectors["promReadBytes"].(prometheus.Gauge).Set(float64(stats.ReadBytes))
+	collectors["promWriteBytes"].(prometheus.Gauge).Set(float64(stats.WriteBytes))
+}
+
+func countProcStats(proc *process.Process, stats *procUpdate) {
+	cmdLine, err := proc.Cmdline()
+	if err != nil {
+		return
+	}
+
+	// only count apache processes
+	if !strings.Contains(cmdLine, "apache") && !strings.Contains(cmdLine, "httpd") {
+		return
+	}
+
+	memInfo, err := proc.MemoryInfo()
+	if err != nil {
+		return
+	}
+	ioInfo, err := proc.IOCounters()
+	if err != nil {
+		return
+	}
+	openFD, err := proc.NumFDs()
+	if err != nil {
+		return
+	}
+	numThreads, err := proc.NumThreads()
+	if err != nil {
+		return
+	}
+	stats.Total++
+	stats.Threads += int(numThreads)
+	stats.OpenFD += int(openFD)
+	stats.RSS += memInfo.RSS
+	stats.VMS += memInfo.VMS
+	stats.ReadBytes += ioInfo.ReadBytes
+	stats.WriteBytes += ioInfo.WriteBytes
+	children, err := proc.Children()
+	if err != nil {
+		return
+	}
+	for _, child := range children {
+		countProcStats(child, stats)
+	}
 }
 
 func metricsUpdate(metricsType int, data string) {
