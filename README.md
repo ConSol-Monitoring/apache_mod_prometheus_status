@@ -216,6 +216,9 @@ Some useful ressources during development:
 ## Changes
 
 ```
+next:
+          - add vhost to default label names
+
 0.0.5   Sat May  9 15:31:40 CEST 2020
           - add process memory/counter/io metrics
           - start go metric server in subprocess
