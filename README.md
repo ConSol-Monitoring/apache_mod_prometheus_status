@@ -43,7 +43,9 @@ configuration.
 
 ### apache.conf:
 ```apache
-LoadModule prometheus_status_module .../mod_prometheus_status.so
+<IfModule !mod_prometheus_status.c>
+  LoadModule prometheus_status_module .../mod_prometheus_status.so
+</IfModule>
 PrometheusStatusEnabled               On
 PrometheusStatusLabelNames            vhost;method;status;application
 PrometheusStatusLabelValues           %v;%m;%s;
