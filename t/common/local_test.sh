@@ -12,6 +12,9 @@ if [ "x$1" != "x" ]; then
   shift
 fi
 
+omd stop dashboard >/dev/null 2>&1
+
+sudo -iu demo \
 PERL_DL_NONLAZY=1 \
   perl -MExtUtils::Command::MM -e "test_harness($VERBOSE, '/thruk/t', 'lib/')" \
   $TESTS

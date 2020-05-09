@@ -12,6 +12,6 @@ require (
 	github.com/prometheus/client_golang v1.5.1
 	github.com/prometheus/common v0.9.1
 	github.com/shirou/gopsutil v0.0.0-20190901111213-e4ec7b275ada
-	golang.org/x/tools v0.0.0-20200505023115-26f46d2f7ef8
+	golang.org/x/tools v0.0.0-20200509030707-2212a7e161a5
 	honnef.co/go/tools v0.0.1-2020.1.3 // indirect
 )

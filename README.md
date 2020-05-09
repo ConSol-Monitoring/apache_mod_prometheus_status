@@ -85,8 +85,6 @@ be changed later on.
 Read more at https://prometheus.io/docs/practices/naming/#labels and
 https://www.robustperception.io/cardinality-is-key
 
-> **_NOTE:_** Cannot be changed with a apache reload, full restart required.
-
 #### PrometheusStatusLabelValues
 Set label values separated by semicolon. You can use the apache logformat here.
 Some high cardinality variables are not implemented.
@@ -107,21 +105,15 @@ Set the folder where the interprocess communication socket will be created in.
 
   Default: /tmp (or system default temporary folder)
 
-> **_NOTE:_** Cannot be changed with a apache reload, full restart required.
-
 #### PrometheusStatusResponseTimeBuckets
 Set the buckets for the response time histogram.
 
   Default: 0.01;0.1;1;10;30
 
-> **_NOTE:_** Cannot be changed with a apache reload, full restart required.
-
 #### PrometheusStatusResponseSizeBuckets
 Set the buckets for the response size histogram.
 
   Default: 1000;10000;100000;1000000;10000000;100000000
-
-> **_NOTE:_** Cannot be changed with a apache reload, full restart required.
 
 ## Metrics
 
@@ -226,6 +218,7 @@ Some useful ressources during development:
 ```
 next:
           - add process memory/counter/io metrics
+          - start go metric server in subprocess
 
 0.0.4   Mon May  4 10:28:17 CEST 2020
           - add example grafana dashboard

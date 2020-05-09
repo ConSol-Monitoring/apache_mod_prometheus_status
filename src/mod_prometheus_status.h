@@ -11,11 +11,13 @@
 #include "http_protocol.h"
 #include "mpm_common.h"
 #include "unixd.h"
+#include "mod_unixd.h"
 #include "mod_log_config.h"
 #include <unistd.h>
 #include <dlfcn.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <sys/stat.h>
 
 module AP_MODULE_DECLARE_DATA prometheus_status_module;
 

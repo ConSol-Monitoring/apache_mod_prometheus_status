@@ -16,12 +16,12 @@ import "C"
 import (
 	"bufio"
 	"io"
-	"io/ioutil"
 	"net"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
-	"unsafe"
 )
 
 const (
@@ -36,12 +36,10 @@ const (
 // compile passing -ldflags "-X main.Build=<build sha1>" to set the id.
 var Build string
 
-var metricsSocket = ""
-var listener *net.Listener
 var defaultSocketTimeout = 1
 
 //export prometheusStatusInit
-func prometheusStatusInit(serverDesc *C.char, serverHostName, version *C.char, debug, userID, groupID C.int, labelNames *C.char, mpmName *C.char, socketTimeout int, tmpFolder, timeBuckets, sizeBuckets *C.char) unsafe.Pointer {
+func prometheusStatusInit(metricsSocket, serverDesc *C.char, serverHostName, version *C.char, debug, userID, groupID C.int, labelNames *C.char, mpmName *C.char, socketTimeout int, timeBuckets, sizeBuckets *C.char) C.int {
 	defaultSocketTimeout = socketTimeout
 
 	initLogging(int(debug))
@@ -49,44 +47,26 @@ func prometheusStatusInit(serverDesc *C.char, serverHostName, version *C.char, d
 	err := registerMetrics(C.GoString(serverDesc), C.GoString(serverHostName), C.GoString(labelNames), C.GoString(mpmName), C.GoString(timeBuckets), C.GoString(sizeBuckets))
 	if err != nil {
 		logErrorf("failed to initialize metrics: %s", err.Error())
-		return unsafe.Pointer(C.CString(""))
+		return C.int(1)
 	}
 
-	if metricsSocket == "" {
-		tmpdir := ""
-		if tmpFolder != nil {
-			tmpdir = C.GoString(tmpFolder)
-		}
-		err := setMetricsSocket(tmpdir)
-		if err != nil {
-			logErrorf("failed to get tmpfile: %s", err.Error())
-			return unsafe.Pointer(C.CString(""))
-		}
-	}
-
-	// close old server
-	if listener != nil {
-		logDebugf("prometheusStatusInit closing old listener")
-		(*listener).Close()
-		listener = nil
-	}
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+	go func() {
+		sig := <-sigs
+		logDebugf("got signal: %d(%s)", sig, sig.String())
+		os.Exit(0)
+	}()
 
 	startChannel := make(chan bool)
-	go startMetricServer(startChannel, metricsSocket, int(userID), int(groupID))
+	go startMetricServer(startChannel, C.GoString(metricsSocket), int(userID), int(groupID))
 	<-startChannel
 
-	logInfof("mod_prometheus_status v%s initialized - socket:%s - uid:%d - gid:%d - build:%s", C.GoString(version), metricsSocket, userID, groupID, Build)
-	return unsafe.Pointer(C.CString(metricsSocket))
+	logInfof("mod_prometheus_status v%s initialized - socket:%s - uid:%d - gid:%d - build:%s", C.GoString(version), C.GoString(metricsSocket), userID, groupID, Build)
+	return C.int(0)
 }
 
 func startMetricServer(startChannel chan bool, socketPath string, userID, groupID int) {
-	defer func() {
-		if listener != nil {
-			(*listener).Close()
-			listener = nil
-		}
-	}()
-	os.Remove(socketPath)
 	logDebugf("InitMetricsCollector: %s (uid: %d, gid: %d)", socketPath, userID, groupID)
 	l, err := net.Listen("unix", socketPath)
 	if err != nil {
@@ -94,13 +74,13 @@ func startMetricServer(startChannel chan bool, socketPath string, userID, groupI
 		startChannel <- false
 		return
 	}
+	defer l.Close()
 	err = os.Chown(socketPath, userID, groupID)
 	if err != nil {
 		logErrorf("cannot chown metricssocket: %s", err.Error())
 		startChannel <- false
 		return
 	}
-	listener = &l
 
 	logDebugf("listening on metricsSocket: %s", socketPath)
 	startChannel <- true
@@ -151,15 +131,6 @@ func metricServer(c net.Conn) {
 			return
 		}
 	}
-}
-
-func setMetricsSocket(tmpFolder string) (err error) {
-	tmpfile, err := ioutil.TempFile(tmpFolder, "metrics.*.sock")
-	if err != nil {
-		return
-	}
-	metricsSocket = tmpfile.Name()
-	return
 }
 
 func main() {}

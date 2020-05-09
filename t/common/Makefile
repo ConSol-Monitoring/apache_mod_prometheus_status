@@ -13,10 +13,10 @@ wait_start:
 	done
 
 test: wait_start
-	docker-compose exec $(DOCKER_COMPOSE_TTY) --user root apache sudo -iu demo /src/t/common/local_test.sh 0
+	docker-compose exec $(DOCKER_COMPOSE_TTY) --user root apache /src/t/common/local_test.sh 0
 
 test_verbose: wait_start
-	docker-compose exec $(DOCKER_COMPOSE_TTY) --user root apache sudo -iu demo /src/t/common/local_test.sh 1
+	docker-compose exec $(DOCKER_COMPOSE_TTY) --user root apache /src/t/common/local_test.sh 1
 
 prepare:
 	docker-compose build

@@ -46,8 +46,8 @@ issues:
     - "`noCopy` is unused"
     - 'Magic number: 1\D '
     - 'Magic number: 2\D '
-    - 'dupImport: package is imported 2 times under different aliases'
     - 'commentFormatting: put a space between'
+    - "Function 'registerMetrics' is too long"
   exclude-rules:
     # Exclude some linters from running on tests files.
     - path: _test\.go

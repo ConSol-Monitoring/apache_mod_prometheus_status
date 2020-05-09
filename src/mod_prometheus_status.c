@@ -12,6 +12,8 @@ extern unixd_config_rec ap_unixd_config;
 #define MOD_STATUS_NUM_STATUS (SERVER_NUM_STATUS+1)
 static int status_flags[MOD_STATUS_NUM_STATUS];
 static int server_limit, thread_limit, threads_per_child, max_servers;
+static apr_proc_t *g_metric_manager = NULL;
+static int g_metric_manager_keep_running = TRUE;
 
 typedef struct {
     char                context[4096];
@@ -32,9 +34,8 @@ static prometheus_status_config config;
 /* Server object for main server as supplied to prometheus_status_init(). */
 static server_rec *main_server = NULL;
 
-char* (*prometheusStatusInitFn)() = NULL;
+int (*prometheusStatusInitFn)() = NULL;
 char *metric_socket = NULL;
-int golang_proc_pid = 0;
 int metric_socket_fd = 0;
 
 /* Handler for the "PrometheusStatusDebug" directive */
@@ -300,15 +301,136 @@ static int prometheus_status_counter(request_rec *r) {
 }
 
 static apr_status_t prometheus_status_cleanup_handler() {
-    // do nothing unless we are the main process
-    if(golang_proc_pid != getpid()) {
-        return(OK);
-    }
     if(metric_socket != NULL) {
+        logDebugf("prometheus_status_cleanup_handler removing %s", metric_socket);
         unlink(metric_socket);
+        free(metric_socket);
         metric_socket = NULL;
     }
+    g_metric_manager_keep_running = FALSE;
     return(OK);
+}
+
+/* prometheus_status_load_gomodule loads/starts the go part */
+static void prometheus_status_load_gomodule(apr_pool_t *p, server_rec *s) {
+    const char* mpm_name = ap_show_mpm();
+
+    // detect go module .so location
+    void *go_module_handle = NULL;
+    char origin[PATH_MAX];
+    apr_os_dso_handle_t *osdso;
+    apr_os_dso_handle_get((void *)&osdso, prometheus_status_module.dynamic_load_handle);
+    if(dlinfo(osdso, RTLD_DI_ORIGIN, &origin) != -1) {
+        char go_so_path[PATH_MAX+100];
+        snprintf(go_so_path, PATH_MAX+100, "%s/mod_prometheus_status_go.so", origin);
+
+        go_module_handle = dlopen(go_so_path, RTLD_LAZY);
+        if(!go_module_handle) {
+            logErrorf("loading %s failed: %s\n", go_so_path, dlerror());
+            exit(1);
+        }
+    }
+    logDebugf("prometheus_status_init gomodule loaded");
+
+    prometheusStatusInitFn = dlsym(go_module_handle, "prometheusStatusInit");
+
+    // run go initializer
+    int rc = (*prometheusStatusInitFn)(
+        metric_socket,
+        ap_get_server_description(),
+        s->server_hostname,
+        VERSION,
+        config.debug,
+        ap_unixd_config.user_id,
+        ap_unixd_config.group_id,
+        config.label_names,
+        mpm_name,
+        defaultSocketTimeout,
+        config.time_buckets,
+        config.size_buckets
+    );
+    if(rc != 0) {
+        logErrorf("mod_prometheus_status initializing failed");
+        exit(1);
+    }
+
+    return;
+}
+
+static void prometheus_status_metric_manager_maint(int reason, void *data, apr_wait_t status) {
+    logDebugf("prometheus_status_metric_manager_maint: %d", reason);
+    apr_proc_t *proc = data;
+
+    switch (reason) {
+        case APR_OC_REASON_DEATH:
+        case APR_OC_REASON_RESTART:
+        case APR_OC_REASON_LOST:
+            prometheus_status_cleanup_handler();
+            apr_proc_other_child_unregister(data);
+            break;
+        case APR_OC_REASON_UNREGISTER:
+            prometheus_status_cleanup_handler();
+            kill(proc->pid, SIGHUP);
+            break;
+    }
+ }
+
+static apr_status_t prometheus_status_create_metrics_manager(apr_pool_t * p, server_rec * s) {
+    apr_status_t rv;
+
+    g_metric_manager = (apr_proc_t *) apr_pcalloc(p, sizeof(*g_metric_manager));
+    rv = apr_proc_fork(g_metric_manager, p);
+    if(rv == APR_INCHILD) {
+        // child process
+        // if running as root, switch to configured user
+        if(ap_unixd_config.suexec_enabled) {
+            if(getuid() != 0) {
+                logErrorf("current user is not root while suexec is enabled, exiting now");
+                exit(1);
+            }
+            if(setgid(ap_unixd_config.group_id) == -1) {
+                logErrorf("setgid: unable to set group id to Group %u", (unsigned) ap_unixd_config.group_id);
+                return -1;
+            }
+            /* Only try to switch if we're running as root */
+            if(!geteuid() && (seteuid(ap_unixd_config.user_id) == -1)) {
+                logErrorf("seteuid: unable to change to uid %ld", (long) ap_unixd_config.user_id);
+                exit(1);
+            }
+        } else
+            ap_unixd_setup_child();
+
+        // load all go stuff in a separated sub process
+        prometheus_status_load_gomodule(p, s);
+        // wait till process ends...
+        while(g_metric_manager_keep_running) {
+            sleep(60);
+        }
+
+        logDebugf("metrics manager exited");
+        exit(0);
+    } else if (rv != APR_INPARENT) {
+        logErrorf("cannot create metrics manager");
+        exit(1);
+    }
+
+    // parent process
+    apr_pool_note_subprocess(p, g_metric_manager, APR_KILL_ONLY_ONCE);
+    apr_proc_other_child_register(g_metric_manager, prometheus_status_metric_manager_maint, g_metric_manager, NULL, p);
+
+    // wait till socket exists
+    struct stat buffer;
+    int retries = 0;
+    while(stat(metric_socket, &buffer) != 0) {
+        usleep(50000);
+        retries++;
+        if(retries > 20) {
+            logErrorf("metrics manager failed to start in time");
+            break;
+        }
+    }
+
+    return APR_SUCCESS;
 }
 
 /* prometheus_status_init registers and initializes all counter */
@@ -326,61 +448,22 @@ static int prometheus_status_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *p
     /* cache main server */
     main_server = s;
 
-    logDebugf("prometheus_status_init version %s", VERSION);
-
     ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &thread_limit);
     ap_mpm_query(AP_MPMQ_HARD_LIMIT_DAEMONS, &server_limit);
     ap_mpm_query(AP_MPMQ_MAX_DAEMONS, &max_servers);
     ap_mpm_query(AP_MPMQ_MAX_THREADS, &threads_per_child);
 
-    const char* mpm_name = ap_show_mpm();
-
     /* work around buggy MPMs */
     if (threads_per_child == 0)
         threads_per_child = 1;
 
-    // load go module part
-    void *go_module_handle = NULL;
-    char origin[PATH_MAX];
-    apr_os_dso_handle_t *osdso;
-    apr_os_dso_handle_get((void *)&osdso, prometheus_status_module.dynamic_load_handle);
-    if(dlinfo(osdso, RTLD_DI_ORIGIN, &origin) != -1) {
-        char go_so_path[PATH_MAX+100];
-        snprintf(go_so_path, PATH_MAX+100, "%s/mod_prometheus_status_go.so", origin);
+    prometheus_status_cleanup_handler();
+    g_metric_manager_keep_running = TRUE;
+    metric_socket = tempnam(config.tmp_folder, "mtr.");
+    logDebugf("prometheus_status_init: version %s - using tmp socket %s", VERSION, metric_socket);
 
-        go_module_handle = dlopen(go_so_path, RTLD_LAZY);
-        if(!go_module_handle) {
-            logErrorf("loading %s failed: %s\n", go_so_path, dlerror());
-            exit(1);
-        }
-    }
-    logDebugf("prometheus_status_init gomodule loaded");
+    prometheus_status_create_metrics_manager(p, s);
 
-    golang_proc_pid = getpid();
-
-    prometheusStatusInitFn = dlsym(go_module_handle, "prometheusStatusInit");
-
-    // run go initializer
-    metric_socket = (*prometheusStatusInitFn)(
-        ap_get_server_description(),
-        s->server_hostname,
-        VERSION,
-        config.debug,
-        ap_unixd_config.user_id,
-        ap_unixd_config.group_id,
-        config.label_names,
-        mpm_name,
-        defaultSocketTimeout,
-        config.tmp_folder,
-        config.time_buckets,
-        config.size_buckets
-    );
-    if(!strcmp(metric_socket, "")) {
-        logErrorf("mod_prometheus_status initializing failed");
-        exit(1);
-    }
-
-    apr_pool_cleanup_register(p, NULL, prometheus_status_cleanup_handler, apr_pool_cleanup_null);
     return OK;
 }
 
@@ -393,7 +476,7 @@ static void prometheus_status_register_hooks(apr_pool_t *p) {
     config.label_names  = "method;status";
     config.time_buckets = "0.01;0.1;1;10;30";
     config.size_buckets = "1000;10000;100000;1000000;10000000;100000000";
-    config.tmp_folder   = "";
+    config.tmp_folder   = NULL;
     strcpy(config.label_values, "%m;%s");
 
     log_hash = apr_hash_make(p);
