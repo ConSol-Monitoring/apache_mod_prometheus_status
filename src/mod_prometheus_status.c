@@ -222,7 +222,8 @@ static int prometheus_status_monitor() {
     prometheus_status_send_communication_socket("server:promScoreboard;%d;closing\n",       status_flags[SERVER_CLOSING]);
     prometheus_status_send_communication_socket("server:promScoreboard;%d;graceful_stop\n", status_flags[SERVER_GRACEFUL]);
     prometheus_status_send_communication_socket("server:promScoreboard;%d;idle_cleanup\n",  status_flags[SERVER_IDLE_KILL]);
-    prometheus_status_send_communication_socket("server:promScoreboard;%d;disabled\n",      status_flags[SERVER_DISABLED]);
+    // disabled slots are not actual worker
+    //prometheus_status_send_communication_socket("server:promScoreboard;%d;disabled\n",      status_flags[SERVER_DISABLED]);
 
     prometheus_status_send_communication_socket("server:promWorkers;%d;ready\n", ready);
     prometheus_status_send_communication_socket("server:promWorkers;%d;busy\n", busy);
