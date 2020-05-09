@@ -100,7 +100,7 @@ static int prometheus_status_open_communication_socket() {
     }
 
     struct timeval timeout;
-    timeout.tv_sec  = defaultSocketTimeout;
+    timeout.tv_sec  = DEFAULTSOCKETTIMEOUT;
     timeout.tv_usec = 0;
 
     if(setsockopt(metric_socket_fd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout)) == -1) {
@@ -162,18 +162,18 @@ static int prometheus_status_monitor() {
     apr_time_t nowtime;
     ap_loadavg_t cpu;
 
-    status_flags[SERVER_DEAD] = 0;
-    status_flags[SERVER_READY] = 0;
-    status_flags[SERVER_STARTING] = 0;
-    status_flags[SERVER_BUSY_READ] = 0;
-    status_flags[SERVER_BUSY_WRITE] = 0;
+    status_flags[SERVER_DEAD]           = 0;
+    status_flags[SERVER_READY]          = 0;
+    status_flags[SERVER_STARTING]       = 0;
+    status_flags[SERVER_BUSY_READ]      = 0;
+    status_flags[SERVER_BUSY_WRITE]     = 0;
     status_flags[SERVER_BUSY_KEEPALIVE] = 0;
-    status_flags[SERVER_BUSY_LOG] = 0;
-    status_flags[SERVER_BUSY_DNS] = 0;
-    status_flags[SERVER_CLOSING] = 0;
-    status_flags[SERVER_GRACEFUL] = 0;
-    status_flags[SERVER_IDLE_KILL] = 0;
-    status_flags[SERVER_DISABLED] = 0;
+    status_flags[SERVER_BUSY_LOG]       = 0;
+    status_flags[SERVER_BUSY_DNS]       = 0;
+    status_flags[SERVER_CLOSING]        = 0;
+    status_flags[SERVER_GRACEFUL]       = 0;
+    status_flags[SERVER_IDLE_KILL]      = 0;
+    status_flags[SERVER_DISABLED]       = 0;
 
     ap_mpm_query(AP_MPMQ_GENERATION, &mpm_generation);
 
@@ -345,7 +345,7 @@ static void prometheus_status_load_gomodule(apr_pool_t *p, server_rec *s) {
         ap_unixd_config.group_id,
         config.label_names,
         mpm_name,
-        defaultSocketTimeout,
+        DEFAULTSOCKETTIMEOUT,
         config.time_buckets,
         config.size_buckets
     );
@@ -472,12 +472,12 @@ static void prometheus_status_register_hooks(apr_pool_t *p) {
     logDebugf("prometheus_status_register_hooks: %s\n", __FILE__);
     const char *err_string = NULL;
     // set defaults
-    config.debug        = 0;
-    config.label_names  = "method;status";
-    config.time_buckets = "0.01;0.1;1;10;30";
-    config.size_buckets = "1000;10000;100000;1000000;10000000;100000000";
-    config.tmp_folder   = NULL;
-    strcpy(config.label_values, "%m;%s");
+    config.debug        = DEFAULTDEBUG;
+    config.label_names  = DEFAULTLABELNAMES;
+    config.time_buckets = DEFAULTTIMEBUCKETS;
+    config.size_buckets = DEFAULTSIZEBUCKETS;
+    config.tmp_folder   = DEFAULTTMPFOLDER;
+    strcpy(config.label_values, DEFAULTLABELVALUES);
 
     log_hash = apr_hash_make(p);
     prometheus_status_register_all_log_handler(p);

@@ -19,9 +19,16 @@
 #include <sys/un.h>
 #include <sys/stat.h>
 
-module AP_MODULE_DECLARE_DATA prometheus_status_module;
+#define DEFAULTSOCKETTIMEOUT 3
 
-#define defaultSocketTimeout 3
+#define DEFAULTDEBUG       0
+#define DEFAULTTMPFOLDER   NULL
+#define DEFAULTLABELNAMES  "method;status"
+#define DEFAULTLABELVALUES "%m;%s"
+#define DEFAULTTIMEBUCKETS "0.01;0.1;1;10;30"
+#define DEFAULTSIZEBUCKETS "1000;10000;100000;1000000;10000000;100000000"
+
+module AP_MODULE_DECLARE_DATA prometheus_status_module;
 
 /* global logger */
 #define logDebugf(_fmt, ...) if(main_server != NULL && config.debug > 0) {\
