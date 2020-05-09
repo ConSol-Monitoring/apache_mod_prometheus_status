@@ -2,6 +2,7 @@
   "annotations": {
     "list": [
       {
+        "$$hashKey": "object:135",
         "builtIn": 1,
         "datasource": "-- Grafana --",
         "enable": true,
@@ -15,8 +16,8 @@
   "editable": true,
   "gnetId": 3894,
   "graphTooltip": 0,
-  "id": 9,
-  "iteration": 1588154865265,
+  "id": 199662,
+  "iteration": 1589032141078,
   "links": [],
   "panels": [
     {
@@ -39,7 +40,7 @@
       },
       "gridPos": {
         "h": 4,
-        "w": 3,
+        "w": 2,
         "x": 0,
         "y": 0
       },
@@ -60,7 +61,6 @@
       "maxDataPoints": 100,
       "nullPointMode": "connected",
       "nullText": null,
-      "options": {},
       "pluginVersion": "6.4.3",
       "postfix": "",
       "postfixFontSize": "50%",
@@ -84,9 +84,10 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "sum(rate(apache_requests_total{instance=~\"$host\", status=~\"$status\", method=~\"$method\"}[1m]))",
+          "expr": "sum(rate(apache_requests_total{instance=~\"$host\", status=~\"$status\", method=~\"$method\", vhost=~\"$vhost\"}[1m]))",
           "hide": false,
           "interval": "",
+          "intervalFactor": 1,
           "legendFormat": "",
           "refId": "A"
         }
@@ -120,8 +121,8 @@
       },
       "gridPos": {
         "h": 4,
-        "w": 3,
-        "x": 3,
+        "w": 2,
+        "x": 2,
         "y": 0
       },
       "id": 17,
@@ -141,7 +142,6 @@
       "maxDataPoints": 100,
       "nullPointMode": "connected",
       "nullText": null,
-      "options": {},
       "postfix": "",
       "postfixFontSize": "50%",
       "prefix": "",
@@ -164,7 +164,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "sum(rate(apache_requests_total{instance=~\"$host\",method=~\"$method\",status=~\"(4|5)..\"}[1m]))",
+          "expr": "sum(rate(apache_requests_total{instance=~\"$host\",method=~\"$method\",status=~\"(4|5)..\", vhost=~\"$vhost\"}[1m]))",
           "interval": "",
           "legendFormat": "",
           "refId": "A"
@@ -205,11 +205,11 @@
       },
       "gridPos": {
         "h": 4,
-        "w": 3,
-        "x": 6,
+        "w": 2,
+        "x": 4,
         "y": 0
       },
-      "id": 16,
+      "id": 35,
       "interval": null,
       "links": [],
       "mappingType": 1,
@@ -226,7 +226,6 @@
       "maxDataPoints": 100,
       "nullPointMode": "connected",
       "nullText": null,
-      "options": {},
       "pluginVersion": "6.7.2",
       "postfix": "",
       "postfixFontSize": "50%",
@@ -250,7 +249,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "sum(rate(apache_response_time_seconds_sum{instance=~\"$host\", status=~\"$status\", method=~\"$method\"}[1m]))\n/\nsum(rate(apache_response_time_seconds_count{instance=~\"$host\", status=~\"$status\", method=~\"$method\"}[1m]))\n",
+          "expr": "sum(rate(apache_response_time_seconds_sum{instance=~\"$host\", status=~\"$status\", method=~\"$method\", vhost=~\"$vhost\"}[1m]))\n/\nsum(rate(apache_response_time_seconds_count{instance=~\"$host\", status=~\"$status\", method=~\"$method\", vhost=~\"$vhost\"}[1m]))\n",
           "format": "time_series",
           "hide": false,
           "interval": "",
@@ -263,7 +262,7 @@
       "thresholds": "",
       "timeFrom": null,
       "timeShift": null,
-      "title": "Average Response time",
+      "title": "Avg. Response time",
       "type": "singlestat",
       "valueFontSize": "80%",
       "valueMaps": [],
@@ -289,8 +288,8 @@
       },
       "gridPos": {
         "h": 4,
-        "w": 3,
-        "x": 9,
+        "w": 2,
+        "x": 6,
         "y": 0
       },
       "id": 18,
@@ -310,7 +309,6 @@
       "maxDataPoints": 100,
       "nullPointMode": "connected",
       "nullText": null,
-      "options": {},
       "pluginVersion": "6.7.2",
       "postfix": "",
       "postfixFontSize": "50%",
@@ -355,6 +353,178 @@
       "valueName": "current"
     },
     {
+      "cacheTimeout": null,
+      "colorBackground": false,
+      "colorValue": false,
+      "colors": [
+        "#299c46",
+        "rgba(237, 129, 40, 0.89)",
+        "#d44a3a"
+      ],
+      "datasource": "prometheus",
+      "format": "short",
+      "gauge": {
+        "maxValue": 100,
+        "minValue": 0,
+        "show": false,
+        "thresholdLabels": false,
+        "thresholdMarkers": true
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 2,
+        "x": 8,
+        "y": 0
+      },
+      "id": 31,
+      "interval": null,
+      "links": [],
+      "mappingType": 1,
+      "mappingTypes": [
+        {
+          "$$hashKey": "object:2939",
+          "name": "value to text",
+          "value": 1
+        },
+        {
+          "$$hashKey": "object:2940",
+          "name": "range to text",
+          "value": 2
+        }
+      ],
+      "maxDataPoints": 100,
+      "nullPointMode": "connected",
+      "nullText": null,
+      "pluginVersion": "6.7.2",
+      "postfix": "",
+      "postfixFontSize": "50%",
+      "prefix": "",
+      "prefixFontSize": "50%",
+      "rangeMaps": [
+        {
+          "from": "null",
+          "text": "N/A",
+          "to": "null"
+        }
+      ],
+      "sparkline": {
+        "fillColor": "rgba(31, 118, 189, 0.18)",
+        "full": false,
+        "lineColor": "rgb(31, 120, 193)",
+        "show": true,
+        "ymax": null,
+        "ymin": null
+      },
+      "tableColumn": "",
+      "targets": [
+        {
+          "expr": "sum(apache_process_counter{instance=~\"$host\"})",
+          "format": "time_series",
+          "hide": false,
+          "instant": false,
+          "interval": "",
+          "intervalFactor": 1,
+          "legendFormat": "",
+          "refId": "A",
+          "step": 240
+        }
+      ],
+      "thresholds": "",
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "Processes",
+      "type": "singlestat",
+      "valueFontSize": "80%",
+      "valueMaps": [],
+      "valueName": "current"
+    },
+    {
+      "cacheTimeout": null,
+      "colorBackground": false,
+      "colorValue": false,
+      "colors": [
+        "#299c46",
+        "rgba(237, 129, 40, 0.89)",
+        "#d44a3a"
+      ],
+      "datasource": "prometheus",
+      "format": "short",
+      "gauge": {
+        "maxValue": 100,
+        "minValue": 0,
+        "show": false,
+        "thresholdLabels": false,
+        "thresholdMarkers": true
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 2,
+        "x": 10,
+        "y": 0
+      },
+      "id": 32,
+      "interval": null,
+      "links": [],
+      "mappingType": 1,
+      "mappingTypes": [
+        {
+          "$$hashKey": "object:2939",
+          "name": "value to text",
+          "value": 1
+        },
+        {
+          "$$hashKey": "object:2940",
+          "name": "range to text",
+          "value": 2
+        }
+      ],
+      "maxDataPoints": 100,
+      "nullPointMode": "connected",
+      "nullText": null,
+      "pluginVersion": "6.7.2",
+      "postfix": "",
+      "postfixFontSize": "50%",
+      "prefix": "",
+      "prefixFontSize": "50%",
+      "rangeMaps": [
+        {
+          "from": "null",
+          "text": "N/A",
+          "to": "null"
+        }
+      ],
+      "sparkline": {
+        "fillColor": "rgba(31, 118, 189, 0.18)",
+        "full": false,
+        "lineColor": "rgb(31, 120, 193)",
+        "show": true,
+        "ymax": null,
+        "ymin": null
+      },
+      "tableColumn": "",
+      "targets": [
+        {
+          "expr": "sum(apache_cpu_load{instance=~\"$host\"})",
+          "format": "time_series",
+          "hide": false,
+          "instant": false,
+          "interval": "",
+          "intervalFactor": 1,
+          "legendFormat": "",
+          "refId": "A",
+          "step": 240
+        }
+      ],
+      "thresholds": "",
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "CPU Load",
+      "type": "singlestat",
+      "valueFontSize": "80%",
+      "valueMaps": [],
+      "valueName": "current"
+    },
+    {
       "columns": [],
       "datasource": "prometheus",
       "fontSize": "100%",
@@ -365,7 +535,6 @@
         "y": 0
       },
       "id": 14,
-      "options": {},
       "pageSize": null,
       "showHeader": true,
       "sort": {
@@ -375,6 +544,7 @@
       "styles": [
         {
           "alias": "Server Description",
+          "align": "auto",
           "colorMode": null,
           "colors": [
             "rgba(245, 54, 54, 0.9)",
@@ -391,6 +561,7 @@
         },
         {
           "alias": "Instance",
+          "align": "auto",
           "colorMode": null,
           "colors": [
             "rgba(245, 54, 54, 0.9)",
@@ -407,6 +578,7 @@
         },
         {
           "alias": "",
+          "align": "auto",
           "colorMode": null,
           "colors": [
             "rgba(245, 54, 54, 0.9)",
@@ -458,9 +630,106 @@
       "fillGradient": 0,
       "gridPos": {
         "h": 6,
-        "w": 12,
+        "w": 24,
         "x": 0,
         "y": 5
+      },
+      "hiddenSeries": false,
+      "id": 30,
+      "legend": {
+        "alignAsTable": true,
+        "avg": true,
+        "current": true,
+        "hideEmpty": true,
+        "hideZero": true,
+        "max": true,
+        "min": true,
+        "rightSide": true,
+        "show": true,
+        "sort": "current",
+        "sortDesc": true,
+        "total": false,
+        "values": true
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "dataLinks": []
+      },
+      "percentage": false,
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "sum by(vhost)(rate(apache_requests_total{instance=~\"$host\", status=~\"$status\", method=~\"$method\", vhost=~\"$vhost\"}[1m]))",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "{{vhost}}",
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Requests/sec by vhost",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "$$hashKey": "object:914",
+          "format": "reqps",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": "0",
+          "show": true
+        },
+        {
+          "$$hashKey": "object:915",
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "prometheus",
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 0,
+        "y": 11
       },
       "hiddenSeries": false,
       "id": 10,
@@ -489,7 +758,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(rate(apache_requests_total{instance=~\"$host\", status=~\"$status\", method=~\"$method\"}[1m]))",
+          "expr": "sum(rate(apache_requests_total{instance=~\"$host\", status=~\"$status\", method=~\"$method\", vhost=~\"$vhost\"}[1m]))",
           "hide": false,
           "interval": "",
           "legendFormat": "Requests per second",
@@ -549,7 +818,7 @@
         "h": 6,
         "w": 12,
         "x": 12,
-        "y": 5
+        "y": 11
       },
       "hiddenSeries": false,
       "id": 12,
@@ -578,7 +847,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(rate(apache_requests_total{instance=~\"$host\",status=~\"(4|5)..\"}[1m]))",
+          "expr": "sum(rate(apache_requests_total{instance=~\"$host\",status=~\"(4|5)..\", vhost=~\"$vhost\"}[1m]))",
           "interval": "",
           "legendFormat": "Errors per second",
           "refId": "A"
@@ -632,13 +901,14 @@
       "dashes": false,
       "datasource": "prometheus",
       "decimals": null,
+      "description": "",
       "fill": 2,
       "fillGradient": 0,
       "gridPos": {
         "h": 7,
         "w": 24,
         "x": 0,
-        "y": 11
+        "y": 17
       },
       "hiddenSeries": false,
       "id": 2,
@@ -653,6 +923,8 @@
         "rightSide": true,
         "show": true,
         "sideWidth": null,
+        "sort": "current",
+        "sortDesc": true,
         "total": false,
         "values": true
       },
@@ -703,6 +975,7 @@
       },
       "yaxes": [
         {
+          "$$hashKey": "object:177",
           "format": "none",
           "label": null,
           "logBase": 1,
@@ -711,6 +984,7 @@
           "show": true
         },
         {
+          "$$hashKey": "object:178",
           "format": "short",
           "label": null,
           "logBase": 1,
@@ -737,7 +1011,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 18
+        "y": 24
       },
       "hiddenSeries": false,
       "id": 4,
@@ -830,7 +1104,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 18
+        "y": 24
       },
       "hiddenSeries": false,
       "id": 3,
@@ -863,7 +1137,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(rate(apache_response_time_seconds_sum{instance=~\"$host\", status=~\"$status\", method=~\"$method\"}[1m]))/sum(rate(apache_response_time_seconds_count{instance=~\"$host\", status=~\"$status\", method=~\"$method\"}[1m]))",
+          "expr": "sum(rate(apache_response_time_seconds_sum{instance=~\"$host\", status=~\"$status\", method=~\"$method\", vhost=~\"$vhost\"}[1m]))\n/\nsum(rate(apache_response_time_seconds_count{instance=~\"$host\", status=~\"$status\", method=~\"$method\", vhost=~\"$vhost\"}[1m]))",
           "format": "heatmap",
           "hide": false,
           "interval": "",
@@ -877,7 +1151,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Average Response time",
+      "title": "Avg. Response time",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -927,7 +1201,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 18
+        "y": 24
       },
       "hiddenSeries": false,
       "id": 1,
@@ -959,7 +1233,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(rate(apache_response_size_bytes_sum{instance=~\"$host\", status=~\"$status\", method=~\"$method\"}[1m]))/sum(rate(apache_response_size_bytes_count{instance=~\"$host\", status=~\"$status\", method=~\"$method\"}[1m]))",
+          "expr": "sum(rate(apache_response_size_bytes_sum{instance=~\"$host\", status=~\"$status\", method=~\"$method\", vhost=~\"$vhost\"}[1m]))\n/\nsum(rate(apache_response_size_bytes_count{instance=~\"$host\", status=~\"$status\", method=~\"$method\", vhost=~\"$vhost\"}[1m]))",
           "format": "time_series",
           "hide": false,
           "interval": "",
@@ -973,7 +1247,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Response Size ",
+      "title": "Avg. Response Size ",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -1017,7 +1291,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 25
+        "y": 31
       },
       "id": 22,
       "panels": [
@@ -1034,7 +1308,7 @@
             "h": 9,
             "w": 24,
             "x": 0,
-            "y": 6
+            "y": 32
           },
           "hiddenSeries": false,
           "id": 5,
@@ -1069,7 +1343,7 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum by(method, status)(rate(apache_requests_total{instance=~\"$host\", status=~\"$status\"}[1m]))",
+              "expr": "sum by(method, status)(rate(apache_requests_total{instance=~\"$host\", status=~\"$status\", vhost=~\"$vhost\"}[1m]))",
               "format": "time_series",
               "hide": false,
               "instant": false,
@@ -1134,8 +1408,9 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 15
+            "y": 41
           },
+          "hiddenSeries": false,
           "id": 27,
           "legend": {
             "alignAsTable": true,
@@ -1168,7 +1443,7 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum by(method, status)(rate(apache_response_time_seconds_sum{instance=~\"$host\", status=~\"$status\", method=~\"$method\"}[1m]))\n/\nsum by(method, status)(rate(apache_response_time_seconds_count{instance=~\"$host\", status=~\"$status\", method=~\"$method\"}[1m]))\n",
+              "expr": "sum by(method, status)(rate(apache_response_time_seconds_sum{instance=~\"$host\", status=~\"$status\", method=~\"$method\", vhost=~\"$vhost\"}[1m]))\n/\nsum by(method, status)(rate(apache_response_time_seconds_count{instance=~\"$host\", status=~\"$status\", method=~\"$method\", vhost=~\"$vhost\"}[1m]))\n",
               "format": "time_series",
               "hide": false,
               "interval": "",
@@ -1232,7 +1507,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 15
+            "y": 41
           },
           "hiddenSeries": false,
           "id": 23,
@@ -1266,7 +1541,7 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum by(method, status)(rate(apache_response_size_bytes_sum{instance=~\"$host\", status=~\"$status\", method=~\"$method\"}[1m]))/sum by(method, status)(rate(apache_response_size_bytes_count{instance=~\"$host\", status=~\"$status\", method=~\"$method\"}[1m]))",
+              "expr": "sum by(method, status)(rate(apache_response_size_bytes_sum{instance=~\"$host\", status=~\"$status\", method=~\"$method\", vhost=~\"$vhost\"}[1m]))/sum by(method, status)(rate(apache_response_size_bytes_count{instance=~\"$host\", status=~\"$status\", method=~\"$method\", vhost=~\"$vhost\"}[1m]))",
               "format": "time_series",
               "hide": false,
               "interval": "",
@@ -1335,7 +1610,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 23
+            "y": 49
           },
           "heatmap": {},
           "hideZeroBuckets": true,
@@ -1344,13 +1619,13 @@
           "legend": {
             "show": false
           },
-          "options": {},
           "reverseYBuckets": false,
           "targets": [
             {
-              "expr": "sum by (le)(rate(apache_response_time_seconds_bucket{instance=~\"$host\", method=~\"$method\", status=~\"$status\"}[1m]))",
+              "expr": "sum by (le)(rate(apache_response_time_seconds_bucket{instance=~\"$host\", method=~\"$method\", status=~\"$status\", vhost=~\"$vhost\"}[1m]))",
               "format": "heatmap",
               "instant": false,
+              "interval": "",
               "intervalFactor": 10,
               "legendFormat": "{{le}}",
               "refId": "A"
@@ -1400,7 +1675,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 23
+            "y": 49
           },
           "heatmap": {},
           "hideZeroBuckets": true,
@@ -1409,13 +1684,13 @@
           "legend": {
             "show": false
           },
-          "options": {},
           "reverseYBuckets": false,
           "targets": [
             {
-              "expr": "sum by (le)(rate(apache_response_size_bytes_bucket{instance=~\"$host\", method=~\"$method\", status=~\"$status\"}[1m]))",
+              "expr": "sum by (le)(rate(apache_response_size_bytes_bucket{instance=~\"$host\", method=~\"$method\", status=~\"$status\", vhost=~\"$vhost\"}[1m]))",
               "format": "heatmap",
               "instant": false,
+              "interval": "",
               "intervalFactor": 10,
               "legendFormat": "{{le}}",
               "refId": "A"
@@ -1450,10 +1725,518 @@
       ],
       "title": "Request Details",
       "type": "row"
+    },
+    {
+      "collapsed": true,
+      "datasource": null,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 32
+      },
+      "id": 34,
+      "panels": [
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "prometheus",
+          "fill": 1,
+          "fillGradient": 0,
+          "gridPos": {
+            "h": 6,
+            "w": 12,
+            "x": 0,
+            "y": 33
+          },
+          "hiddenSeries": false,
+          "id": 36,
+          "legend": {
+            "alignAsTable": false,
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 1,
+          "nullPointMode": "null",
+          "options": {
+            "dataLinks": []
+          },
+          "percentage": false,
+          "pointradius": 2,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "sum(apache_process_total_threads{instance=~\"$host\"})",
+              "interval": "",
+              "legendFormat": "Processes",
+              "refId": "A"
+            },
+            {
+              "expr": "sum(apache_process_counter{instance=~\"$host\"})",
+              "interval": "",
+              "legendFormat": "Threads",
+              "refId": "B"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeRegions": [],
+          "timeShift": null,
+          "title": "Processes",
+          "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "$$hashKey": "object:3162",
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": "0",
+              "show": true
+            },
+            {
+              "$$hashKey": "object:3163",
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "prometheus",
+          "fill": 1,
+          "fillGradient": 0,
+          "gridPos": {
+            "h": 6,
+            "w": 12,
+            "x": 12,
+            "y": 33
+          },
+          "hiddenSeries": false,
+          "id": 37,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 1,
+          "nullPointMode": "null",
+          "options": {
+            "dataLinks": []
+          },
+          "percentage": false,
+          "pointradius": 2,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "sum(apache_process_total_rss_memory_bytes{instance=~\"$host\"})",
+              "interval": "",
+              "legendFormat": "RSS",
+              "refId": "A"
+            },
+            {
+              "expr": "sum(apache_process_total_virt_memory_bytes{instance=~\"$host\"})",
+              "interval": "",
+              "legendFormat": "VMS",
+              "refId": "B"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeRegions": [],
+          "timeShift": null,
+          "title": "Total Memory",
+          "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "$$hashKey": "object:3162",
+              "format": "bytes",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": "0",
+              "show": true
+            },
+            {
+              "$$hashKey": "object:3163",
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "prometheus",
+          "fill": 1,
+          "fillGradient": 0,
+          "gridPos": {
+            "h": 6,
+            "w": 12,
+            "x": 0,
+            "y": 39
+          },
+          "hiddenSeries": false,
+          "id": 39,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 1,
+          "nullPointMode": "null",
+          "options": {
+            "dataLinks": []
+          },
+          "percentage": false,
+          "pointradius": 2,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [
+            {
+              "$$hashKey": "object:3660",
+              "alias": "Write",
+              "transform": "negative-Y"
+            }
+          ],
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "sum(rate(apache_process_total_io_read_bytes{instance=~\"$host\"}[1m]))",
+              "interval": "",
+              "legendFormat": "Read",
+              "refId": "A"
+            },
+            {
+              "expr": "sum(rate(apache_process_total_io_write_bytes{instance=~\"$host\"}[1m]))",
+              "interval": "",
+              "legendFormat": "Write",
+              "refId": "B"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeRegions": [],
+          "timeShift": null,
+          "title": "Total Disk IO",
+          "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "$$hashKey": "object:3162",
+              "format": "bytes",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "$$hashKey": "object:3163",
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "prometheus",
+          "fill": 1,
+          "fillGradient": 0,
+          "gridPos": {
+            "h": 6,
+            "w": 12,
+            "x": 12,
+            "y": 39
+          },
+          "hiddenSeries": false,
+          "id": 38,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 1,
+          "nullPointMode": "null",
+          "options": {
+            "dataLinks": []
+          },
+          "percentage": false,
+          "pointradius": 2,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "sum(apache_process_total_rss_memory_bytes{instance=~\"$host\"})\n/\nsum(apache_process_counter{instance=~\"$host\"})",
+              "interval": "",
+              "legendFormat": "RSS",
+              "refId": "A"
+            },
+            {
+              "expr": "sum(apache_process_total_virt_memory_bytes{instance=~\"$host\"})\n/\nsum(apache_process_counter{instance=~\"$host\"})",
+              "interval": "",
+              "legendFormat": "VMS",
+              "refId": "B"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeRegions": [],
+          "timeShift": null,
+          "title": "Avg. Memory per Process",
+          "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "$$hashKey": "object:3162",
+              "format": "bytes",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": "0",
+              "show": true
+            },
+            {
+              "$$hashKey": "object:3163",
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "prometheus",
+          "fill": 1,
+          "fillGradient": 0,
+          "gridPos": {
+            "h": 6,
+            "w": 12,
+            "x": 0,
+            "y": 45
+          },
+          "hiddenSeries": false,
+          "id": 40,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 1,
+          "nullPointMode": "null",
+          "options": {
+            "dataLinks": []
+          },
+          "percentage": false,
+          "pointradius": 2,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [
+            {
+              "$$hashKey": "object:3901",
+              "alias": "Total Open Files",
+              "yaxis": 2
+            }
+          ],
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "sum(apache_process_total_open_fd{instance=~\"$host\"})\n/\nsum(apache_process_counter{instance=~\"$host\"})",
+              "interval": "",
+              "legendFormat": "Open Files By Process",
+              "refId": "B"
+            },
+            {
+              "expr": "sum(apache_process_total_open_fd{instance=~\"$host\"})",
+              "interval": "",
+              "legendFormat": "Total Open Files",
+              "refId": "A"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeRegions": [],
+          "timeShift": null,
+          "title": "Open Files",
+          "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "$$hashKey": "object:3162",
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": "0",
+              "show": true
+            },
+            {
+              "$$hashKey": "object:3163",
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        }
+      ],
+      "title": "Process Details",
+      "type": "row"
     }
   ],
   "refresh": "30s",
-  "schemaVersion": 20,
+  "schemaVersion": 22,
   "style": "dark",
   "tags": [
     "prometheus"
@@ -1500,6 +2283,7 @@
         "definition": "label_values(apache_requests_total, method)",
         "hide": 0,
         "includeAll": true,
+        "index": -1,
         "label": "Method",
         "multi": true,
         "name": "method",
@@ -1527,6 +2311,7 @@
         "definition": "label_values(apache_requests_total, status)",
         "hide": 0,
         "includeAll": true,
+        "index": -1,
         "label": "Status",
         "multi": true,
         "name": "status",
@@ -1541,11 +2326,39 @@
         "tagsQuery": "",
         "type": "query",
         "useTags": false
+      },
+      {
+        "allValue": null,
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": "prometheus",
+        "definition": "label_values(apache_requests_total, vhost)",
+        "hide": 0,
+        "includeAll": true,
+        "index": -1,
+        "label": "VHost",
+        "multi": true,
+        "name": "vhost",
+        "options": [],
+        "query": "label_values(apache_requests_total, vhost)",
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 3,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
       }
     ]
   },
   "time": {
-    "from": "now-3h",
+    "from": "now-15m",
     "to": "now"
   },
   "timepicker": {
@@ -1574,7 +2387,10 @@
     ]
   },
   "timezone": "",
-  "title": "Apache",
-  "uid": "Sh33LLqZo",
-  "version": 8
+  "title": "Apache Local Copy",
+  "uid": "WKtSuA6Zz",
+  "variables": {
+    "list": []
+  },
+  "version": 3
 }
