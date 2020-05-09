@@ -111,12 +111,12 @@ releasetest: releasetarball dist
 	rm -rf $(NAME)-$(VERSION)
 
 version:
-	TIMESTAMP=$(LC_TIME=C date) && \
+	TIMESTAMP="$(shell LC_TIME=C date)" && \
 	NEWVERSION=$$(dialog --stdout --inputbox "New Version:" 0 0 "v$(VERSION)") && \
 		NEWVERSION=$$(echo $$NEWVERSION | sed "s/^v//g"); \
 		if [ "v$(VERSION)" = "v$$NEWVERSION" -o "x$$NEWVERSION" = "x" ]; then echo "no changes"; exit 1; fi; \
 		sed -i -e 's/define VERSION ".*"/define VERSION "'$$NEWVERSION'"/g' $(WRAPPER_HEADER); \
-		sed -i -e 's/next:/$$NEWVERSION   $$TIMESTAMP/g' README.md;
+		sed -i -e 's/next:/'"$$NEWVERSION"'   '"$$TIMESTAMP"'/g' README.md;
 
 versioncheck:
 	@[ $$( printf '%s\n' $(GOVERSION) $(MINGOVERSION) | sort | head -n 1 ) = $(MINGOVERSION) ] || { \
