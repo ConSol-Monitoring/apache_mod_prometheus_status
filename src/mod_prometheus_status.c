@@ -382,25 +382,6 @@ static apr_status_t prometheus_status_create_metrics_manager(apr_pool_t * p, ser
     g_metric_manager = (apr_proc_t *) apr_pcalloc(p, sizeof(*g_metric_manager));
     rv = apr_proc_fork(g_metric_manager, p);
     if(rv == APR_INCHILD) {
-        // child process
-        // if running as root, switch to configured user
-        if(ap_unixd_config.suexec_enabled) {
-            if(getuid() != 0) {
-                logErrorf("current user is not root while suexec is enabled, exiting now");
-                exit(1);
-            }
-            if(setgid(ap_unixd_config.group_id) == -1) {
-                logErrorf("setgid: unable to set group id to Group %u", (unsigned) ap_unixd_config.group_id);
-                return -1;
-            }
-            /* Only try to switch if we're running as root */
-            if(!geteuid() && (seteuid(ap_unixd_config.user_id) == -1)) {
-                logErrorf("seteuid: unable to change to uid %ld", (long) ap_unixd_config.user_id);
-                exit(1);
-            }
-        } else
-            ap_unixd_setup_child();
-
         // load all go stuff in a separated sub process
         prometheus_status_load_gomodule(p, s);
         // wait till process ends...
