@@ -92,6 +92,10 @@ static int prometheus_status_open_communication_socket() {
     if(metric_socket_fd != 0) {
         return(TRUE);
     }
+    // not yet initialized
+    if(metric_socket == NULL) {
+        return(FALSE);
+    }
     strcpy(addr.sun_path, metric_socket);
     metric_socket_fd = socket(PF_UNIX, SOCK_STREAM, 0);
     if(connect(metric_socket_fd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
@@ -133,10 +137,8 @@ static int prometheus_status_send_communication_socket(const char *fmt, ...) {
     va_list ap;
 
     // open socket unless open
-    if(metric_socket_fd == 0) {
-        if(!prometheus_status_open_communication_socket()) {
-            return(FALSE);
-        }
+    if(!prometheus_status_open_communication_socket()) {
+        return(FALSE);
     }
 
     va_start(ap, fmt);
@@ -254,6 +256,7 @@ static int prometheus_status_handler(request_rec *r) {
 
     if(!prometheus_status_send_communication_socket("metrics\n")) {
         ap_rputs("ERROR: failed fetch metrics\n", r);
+        logErrorf("failed fetch metrics: socket:%s fd:%d", metric_socket, metric_socket_fd);
         return(HTTP_INTERNAL_SERVER_ERROR);
     }
 
