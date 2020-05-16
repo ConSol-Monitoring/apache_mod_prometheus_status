@@ -13,12 +13,6 @@ const (
 	// LogFormat sets the log format
 	LogFormat = `[%{Date} %{Time "15:04:05.000000"}][mod_prometheus_status][%{Severity}]%{Message}`
 
-	// LogColors sets colors for some log levels
-	LogColors = `%{Color "yellow" "WARN"}%{Color "red" "ERROR"}%{Color "red" "FATAL"}`
-
-	// LogColorReset resets colors from LogColors
-	LogColorReset = `%{Color "reset"}`
-
 	// LogVerbosityDebug sets the debug log level
 	LogVerbosityDebug = 2
 
@@ -37,7 +31,7 @@ func initLogging(enableDebug int) {
 	if logger != nil {
 		return
 	}
-	logger = factorlog.New(os.Stderr, factorlog.NewStdFormatter(LogColors+LogFormat+LogColorReset))
+	logger = factorlog.New(os.Stderr, factorlog.NewStdFormatter(LogFormat))
 
 	logger.SetVerbosity(LogVerbosityDebug)
 	switch enableDebug {
