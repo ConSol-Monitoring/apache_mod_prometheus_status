@@ -218,6 +218,10 @@ Some useful ressources during development:
 ## Changes
 
 ```
+next:
+          - fix issue when initally loaded by reload instead of a fresh apache start
+          - update example dashboard
+
 0.0.6   Sat May  9 18:15:31 CEST 2020
           - add vhost to default label names
           - hide 'disabled' scoreboard entry, its not an actual slot
