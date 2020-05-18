@@ -220,7 +220,7 @@ Some useful ressources during development:
 ## Changes
 
 ```
-next:
+0.0.7   Mon May 18 11:05:59 CEST 2020
           - fix issue when initally loaded by reload instead of a fresh apache start
           - improve responding to metrics requests during apache reloads
           - update example dashboard
