@@ -99,7 +99,7 @@ static int prometheus_status_open_communication_socket() {
     strcpy(addr.sun_path, metric_socket);
     metric_socket_fd = socket(PF_UNIX, SOCK_STREAM, 0);
     if(connect(metric_socket_fd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
-        logErrorf("failed to open metrics socket: socket:%s fd:%d errno:%d (%s)", metric_socket, metric_socket_fd, errno, strerror(errno));
+        logDebugf("failed to open metrics socket: socket:%s fd:%d errno:%d (%s)", metric_socket, metric_socket_fd, errno, strerror(errno));
         return(FALSE);
     }
 
@@ -146,7 +146,7 @@ static int prometheus_status_send_communication_socket(const char *fmt, ...) {
     va_end(ap);
 
     if(write(metric_socket_fd, buffer, nbytes) < 0) {
-        logErrorf("failed to send to metrics collector: socket:%s fd:%d errno:%d (%s)", metric_socket, metric_socket_fd, errno, strerror(errno));
+        logDebugf("failed to send to metrics collector: socket:%s fd:%d errno:%d (%s)", metric_socket, metric_socket_fd, errno, strerror(errno));
         prometheus_status_close_communication_socket();
     }
     return(TRUE);
@@ -306,8 +306,7 @@ static int prometheus_status_counter(request_rec *r) {
 
 static apr_status_t prometheus_status_cleanup_handler() {
     if(metric_socket != NULL) {
-        logDebugf("prometheus_status_cleanup_handler removing %s", metric_socket);
-        unlink(metric_socket);
+        logDebugf("prometheus_status_cleanup_handler");
         free(metric_socket);
         metric_socket = NULL;
     }
@@ -334,7 +333,7 @@ static void prometheus_status_load_gomodule(apr_pool_t *p, server_rec *s) {
             exit(1);
         }
     }
-    logDebugf("prometheus_status_init gomodule loaded");
+    logDebugf("prometheus_status_load_gomodule gomodule loaded");
 
     prometheusStatusInitFn = dlsym(go_module_handle, "prometheusStatusInit");
 
@@ -418,8 +417,11 @@ static apr_status_t prometheus_status_create_metrics_manager(apr_pool_t * p, ser
     return APR_SUCCESS;
 }
 
-/* prometheus_status_init registers and initializes all counter */
+/* prometheus_status_init creates go metrics manager process */
 static int prometheus_status_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *s) {
+    /* cache main server */
+    main_server = s;
+
     void *data = NULL;
     const char *key = "prometheus_status_init";
 
@@ -429,9 +431,6 @@ static int prometheus_status_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *p
         apr_pool_userdata_set((const void *)1, key, apr_pool_cleanup_null, s->process->pool);
         return OK;
     }
-
-    /* cache main server */
-    main_server = s;
 
     ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &thread_limit);
     ap_mpm_query(AP_MPMQ_HARD_LIMIT_DAEMONS, &server_limit);
@@ -454,7 +453,6 @@ static int prometheus_status_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *p
 
 /* prometheus_status_register_hooks registers all required hooks */
 static void prometheus_status_register_hooks(apr_pool_t *p) {
-    logDebugf("prometheus_status_register_hooks: %s\n", __FILE__);
     const char *err_string = NULL;
     // set defaults
     config.debug        = DEFAULTDEBUG;

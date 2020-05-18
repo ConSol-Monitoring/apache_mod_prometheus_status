@@ -41,6 +41,8 @@ configuration.
 
 ## Configuration
 
+> **_NOTE:_** Loading this module the first time requires a apache restart. Reload is not sufficient.
+
 ### apache.conf:
 ```apache
 <IfModule !mod_prometheus_status.c>
@@ -220,6 +222,7 @@ Some useful ressources during development:
 ```
 next:
           - fix issue when initally loaded by reload instead of a fresh apache start
+          - improve responding to metrics requests during apache reloads
           - update example dashboard
 
 0.0.6   Sat May  9 18:15:31 CEST 2020

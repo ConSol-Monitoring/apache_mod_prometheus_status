@@ -31,13 +31,13 @@
 module AP_MODULE_DECLARE_DATA prometheus_status_module;
 
 /* global logger */
-#define logDebugf(_fmt, ...) if(main_server != NULL && config.debug > 0) {\
+#define logDebugf(_fmt, ...) if(config.debug > 0) {\
     ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, main_server, \
     "[%s][%s:%d] "_fmt, NAME, __FILE__, __LINE__, ## __VA_ARGS__); }
 
-#define logErrorf(_fmt, ...) if(main_server != NULL) {\
+#define logErrorf(_fmt, ...) \
     ap_log_error(APLOG_MARK, APLOG_ERR, 0, main_server, \
-    "[%s][%s:%d] "_fmt, NAME, __FILE__, __LINE__, ## __VA_ARGS__); }
+    "[%s][%s:%d] "_fmt, NAME, __FILE__, __LINE__, ## __VA_ARGS__);
 
 apr_array_header_t *parse_log_string(apr_pool_t *p, const char *s, const char **err);
 void prometheus_status_expand_variables(apr_array_header_t *format, request_rec *r, const char**output);

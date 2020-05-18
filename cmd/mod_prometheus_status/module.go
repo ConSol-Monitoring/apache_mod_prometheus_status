@@ -38,6 +38,11 @@ var Build string
 
 var defaultSocketTimeout = 1
 
+const (
+	// SigHupDelayExitSeconds sets the amount of extra seconds till exiting after receiving a SIGHUP
+	SigHupDelayExitSeconds = 5
+)
+
 //export prometheusStatusInit
 func prometheusStatusInit(metricsSocket, serverDesc *C.char, serverHostName, version *C.char, debug, userID, groupID C.int, labelNames *C.char, mpmName *C.char, socketTimeout int, timeBuckets, sizeBuckets *C.char) C.int {
 	defaultSocketTimeout = socketTimeout
@@ -55,6 +60,11 @@ func prometheusStatusInit(metricsSocket, serverDesc *C.char, serverHostName, ver
 	go func() {
 		sig := <-sigs
 		logDebugf("got signal: %d(%s)", sig, sig.String())
+		// wait a few extra seconds on sighups to answer metrics requests during reloads
+		if sig == syscall.SIGHUP {
+			time.Sleep(time.Duration(SigHupDelayExitSeconds) * time.Second)
+		}
+		os.Remove(C.GoString(metricsSocket))
 		os.Exit(0)
 	}()
 
