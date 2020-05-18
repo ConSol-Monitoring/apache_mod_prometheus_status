@@ -93,7 +93,7 @@ https://www.robustperception.io/cardinality-is-key
 Set label values separated by semicolon. You can use the apache logformat here.
 Some high cardinality variables are not implemented.
 
-  Default: %m;%s
+  Default: %v;%m;%s
 
 Useful examples are:
 
