@@ -220,6 +220,9 @@ Some useful ressources during development:
 ## Changes
 
 ```
+0.0.8   Tue Jun 23 22:30:20 CEST 2020
+          - fix compile error on gcc 10
+
 0.0.7   Mon May 18 11:05:59 CEST 2020
           - fix issue when initally loaded by reload instead of a fresh apache start
           - improve responding to metrics requests during apache reloads
