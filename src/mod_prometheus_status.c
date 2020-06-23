@@ -522,6 +522,7 @@ static const command_rec prometheus_status_directives[] = {
 };
 
 /* register mod_prometheus_status within the apache */
+extern module AP_MODULE_DECLARE_DATA prometheus_status_module;
 module AP_MODULE_DECLARE_DATA prometheus_status_module = {
     STANDARD20_MODULE_STUFF,
     prometheus_status_create_dir_conf,      /* create per-dir    config structures */
