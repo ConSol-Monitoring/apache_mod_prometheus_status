@@ -13,5 +13,5 @@ require (
 	github.com/prometheus/common v0.9.1
 	github.com/shirou/gopsutil v0.0.0-20190901111213-e4ec7b275ada
 	github.com/stretchr/objx v0.2.0 // indirect
-	golang.org/x/tools v0.0.0-20200515220128-d3bf790afa53
+	golang.org/x/tools v0.0.0-20200623185156-456ad74e1464
 )
