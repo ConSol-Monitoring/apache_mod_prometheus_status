@@ -220,6 +220,9 @@ Some useful ressources during development:
 ## Changes
 
 ```
+0.0.9   Thu Jun 25 14:04:37 CEST 2020
+          - fix compile error on gcc 10 again
+
 0.0.8   Tue Jun 23 22:30:20 CEST 2020
           - fix compile error on gcc 10
 

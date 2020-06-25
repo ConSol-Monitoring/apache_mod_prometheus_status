@@ -28,8 +28,6 @@
 #define DEFAULTTIMEBUCKETS "0.01;0.1;1;10;30"
 #define DEFAULTSIZEBUCKETS "1000;10000;100000;1000000;10000000;100000000"
 
-module AP_MODULE_DECLARE_DATA prometheus_status_module;
-
 /* global logger */
 #define logDebugf(_fmt, ...) if(config.debug > 0) {\
     ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, main_server, \

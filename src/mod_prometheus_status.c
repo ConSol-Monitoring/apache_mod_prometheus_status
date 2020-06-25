@@ -38,6 +38,44 @@ int (*prometheusStatusInitFn)() = NULL;
 char *metric_socket = NULL;
 int metric_socket_fd = 0;
 
+void *prometheus_status_create_dir_conf(apr_pool_t *pool, char *context);
+void *prometheus_status_merge_dir_conf(apr_pool_t *pool, void *BASE, void *ADD);
+void *prometheus_status_create_server_conf(apr_pool_t *pool, server_rec *s);
+static void prometheus_status_register_hooks(apr_pool_t *p);
+const char *prometheus_status_set_debug(cmd_parms *cmd, void *cfg, int val);
+static const char *prometheus_status_set_label_names(cmd_parms *cmd, void *cfg, const char *arg);
+static const char *prometheus_status_set_tmp_folder(cmd_parms *cmd, void *cfg, const char *arg);
+static const char *prometheus_status_set_time_buckets(cmd_parms *cmd, void *cfg, const char *arg);
+static const char *prometheus_status_set_size_buckets(cmd_parms *cmd, void *cfg, const char *arg);
+const char *prometheus_status_set_enabled(cmd_parms *cmd, void *cfg, int val);
+const char *prometheus_status_set_label_values(cmd_parms *cmd, void *cfg, const char *arg);
+
+/* available configuration directives */
+static const command_rec prometheus_status_directives[] = {
+    /* server level */
+    AP_INIT_FLAG("PrometheusStatusDebug",                   prometheus_status_set_debug,         NULL, RSRC_CONF, "Set to On to debug output."),
+    AP_INIT_RAW_ARGS("PrometheusStatusLabelNames",          prometheus_status_set_label_names,   NULL, RSRC_CONF, "Set a request specific label names from within apache directives."),
+    AP_INIT_RAW_ARGS("PrometheusStatusTmpFolder",           prometheus_status_set_tmp_folder,    NULL, RSRC_CONF, "Set folder for communication socket."),
+    AP_INIT_RAW_ARGS("PrometheusStatusResponseTimeBuckets", prometheus_status_set_time_buckets,  NULL, RSRC_CONF, "Set response time histogram buckets."),
+    AP_INIT_RAW_ARGS("PrometheusStatusResponseSizeBuckets", prometheus_status_set_size_buckets,  NULL, RSRC_CONF, "Set response size histogram buckets."),
+
+    /* directory level */
+    AP_INIT_FLAG("PrometheusStatusEnabled",                 prometheus_status_set_enabled,       NULL, OR_ALL,    "Set to Off to disable collecting metrics (for this directory/location)."),
+    AP_INIT_RAW_ARGS("PrometheusStatusLabelValues",         prometheus_status_set_label_values,  NULL, OR_ALL,    "Set a request label values from within apache directives"),
+    { NULL }
+};
+
+/* register mod_prometheus_status within the apache */
+module AP_MODULE_DECLARE_DATA prometheus_status_module = {
+    STANDARD20_MODULE_STUFF,
+    prometheus_status_create_dir_conf,      /* create per-dir    config structures */
+    prometheus_status_merge_dir_conf,       /* merge  per-dir    config structures */
+    prometheus_status_create_server_conf,   /* create per-server config structures */
+    prometheus_status_merge_dir_conf,       /* merge  per-server config structures */
+    prometheus_status_directives,           /* table of config file commands       */
+    prometheus_status_register_hooks        /* register hooks                      */
+};
+
 /* Handler for the "PrometheusStatusDebug" directive */
 const char *prometheus_status_set_debug(cmd_parms *cmd, void *cfg, int val) {
     config.debug = val;
@@ -506,29 +544,3 @@ void *prometheus_status_create_server_conf(apr_pool_t *pool, server_rec *s) {
     return(prometheus_status_create_dir_conf(pool, "server config"));
 }
 
-/* available configuration directives */
-static const command_rec prometheus_status_directives[] = {
-    /* server level */
-    AP_INIT_FLAG("PrometheusStatusDebug",                   prometheus_status_set_debug,         NULL, RSRC_CONF, "Set to On to debug output."),
-    AP_INIT_RAW_ARGS("PrometheusStatusLabelNames",          prometheus_status_set_label_names,   NULL, RSRC_CONF, "Set a request specific label names from within apache directives."),
-    AP_INIT_RAW_ARGS("PrometheusStatusTmpFolder",           prometheus_status_set_tmp_folder,    NULL, RSRC_CONF, "Set folder for communication socket."),
-    AP_INIT_RAW_ARGS("PrometheusStatusResponseTimeBuckets", prometheus_status_set_time_buckets,  NULL, RSRC_CONF, "Set response time histogram buckets."),
-    AP_INIT_RAW_ARGS("PrometheusStatusResponseSizeBuckets", prometheus_status_set_size_buckets,  NULL, RSRC_CONF, "Set response size histogram buckets."),
-
-    /* directory level */
-    AP_INIT_FLAG("PrometheusStatusEnabled",                 prometheus_status_set_enabled,       NULL, OR_ALL,    "Set to Off to disable collecting metrics (for this directory/location)."),
-    AP_INIT_RAW_ARGS("PrometheusStatusLabelValues",         prometheus_status_set_label_values,  NULL, OR_ALL,    "Set a request label values from within apache directives"),
-    { NULL }
-};
-
-/* register mod_prometheus_status within the apache */
-extern module AP_MODULE_DECLARE_DATA prometheus_status_module;
-module AP_MODULE_DECLARE_DATA prometheus_status_module = {
-    STANDARD20_MODULE_STUFF,
-    prometheus_status_create_dir_conf,      /* create per-dir    config structures */
-    prometheus_status_merge_dir_conf,       /* merge  per-dir    config structures */
-    prometheus_status_create_server_conf,   /* create per-server config structures */
-    prometheus_status_merge_dir_conf,       /* merge  per-server config structures */
-    prometheus_status_directives,           /* table of config file commands       */
-    prometheus_status_register_hooks        /* register hooks                      */
-};
