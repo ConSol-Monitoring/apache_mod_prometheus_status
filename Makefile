@@ -75,10 +75,18 @@ update_readme_available_metrics: testbox_centos8
 	rm metrics.txt
 
 updatedeps: versioncheck
-	go list -u -m all
+	$(MAKE) clean
+	go mod download
+	set -e; for DEP in $(shell grep "_ " buildtools/tools.go | awk '{ print $$2 }'); do \
+		go get $$DEP; \
+	done
+	go get -u ./...
+	go get -t -u ./...
 	go mod tidy
 
 vendor:
+	go mod download
+	go mod tidy
 	go mod vendor
 
 dist:
@@ -139,12 +147,13 @@ fmt: tools
 	cd $(GO_SRC_DIR) && go vet -all -assign -atomic -bool -composites -copylocks -nilfunc -rangeloops -unsafeptr -unreachable .
 	cd $(GO_SRC_DIR) && gofmt -w -s .
 
-tools: versioncheck dump
+tools: versioncheck vendor dump
 	go mod download
-	set -e; for DEP in $(shell grep _ buildtools/tools.go | awk '{ print $$2 }'); do \
-		go get $$DEP; \
+	set -e; for DEP in $(shell grep "_ " buildtools/tools.go | awk '{ print $$2 }'); do \
+		go install $$DEP; \
 	done
 	go mod tidy
+	go mod vendor
 
 citest:
 	#
