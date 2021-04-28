@@ -15,6 +15,7 @@ import "C"
 
 import (
 	"bufio"
+	"errors"
 	"io"
 	"net"
 	"os"
@@ -113,7 +114,7 @@ func metricServer(c net.Conn) {
 	for {
 		line, err := buf.ReadString('\n')
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				return
 			}
 			logErrorf("Reading client error: %s", err.Error())
