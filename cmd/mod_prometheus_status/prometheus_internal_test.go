@@ -7,6 +7,7 @@ import (
 )
 
 func TestExpandBuckets(t *testing.T) {
+	t.Parallel()
 	list := []float64{0.1, 0.5, 1, 10}
 	res, err := expandBuckets(" 0.1;0.5;1; 10")
 	CmpNoError(t, err)

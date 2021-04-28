@@ -38,6 +38,10 @@ linters:
     - interfacer
     - wsl
     - godot
+    - gofumpt
+    - nlreturn
+    - exhaustivestruct
+    - cyclop
   fast: false
 issues:
   max-same-issues: 0
