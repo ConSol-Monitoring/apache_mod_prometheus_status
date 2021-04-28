@@ -220,6 +220,9 @@ Some useful ressources during development:
 ## Changes
 
 ```
+0.1.0   Wed Apr 28 09:40:16 CEST 2021
+          - fix setting PrometheusStatusResponseTimeBuckets
+
 0.0.9   Thu Jun 25 14:04:37 CEST 2020
           - fix compile error on gcc 10 again
 
