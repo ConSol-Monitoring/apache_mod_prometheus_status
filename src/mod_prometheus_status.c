@@ -103,7 +103,7 @@ static const char *prometheus_status_set_tmp_folder(cmd_parms *cmd, void *cfg, c
 
 /* Handler for the "PrometheusStatusResponseTimeBuckets" directive */
 static const char *prometheus_status_set_time_buckets(cmd_parms *cmd, void *cfg, const char *arg) {
-    config.size_buckets  = arg;
+    config.time_buckets  = arg;
     return NULL;
 }
 
@@ -543,4 +543,3 @@ void *prometheus_status_merge_dir_conf(apr_pool_t *pool, void *BASE, void *ADD) 
 void *prometheus_status_create_server_conf(apr_pool_t *pool, server_rec *s) {
     return(prometheus_status_create_dir_conf(pool, "server config"));
 }
-
