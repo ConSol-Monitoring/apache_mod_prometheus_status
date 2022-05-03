@@ -1,5 +1,8 @@
 Changes
 
+0.2.0   Tue May  3 10:42:58 CEST 2022
+          - update dependencies
+
 0.1.0   Wed Apr 28 09:40:16 CEST 2021
           - fix setting PrometheusStatusResponseTimeBuckets
 

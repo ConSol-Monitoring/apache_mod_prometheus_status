@@ -25,6 +25,7 @@ DISTFILES=\
 	Apache-Dashboard.json \
 	LICENSE \
 	README.md \
+	Changelog \
 	Makefile
 
 GOVERSION:=$(shell \
@@ -118,7 +119,7 @@ dist:
 
 releasetarball: clean build
 	rm -f $(RELEASENAME).tar.gz
-	tar --transform 's,^,./$(RELEASENAME)/,g' -cf $(RELEASENAME).tar *.so example_apache.conf README.md LICENSE
+	tar --transform 's,^,./$(RELEASENAME)/,g' -cf $(RELEASENAME).tar *.so example_apache.conf README.md LICENSE Changelog
 	gzip -9 $(RELEASENAME).tar
 
 release: releasetest
