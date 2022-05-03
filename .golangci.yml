@@ -50,8 +50,14 @@ issues:
     - "`noCopy` is unused"
     - 'Magic number: 1\D '
     - 'Magic number: 2\D '
+    - 'Magic number: 64\D '
     - 'commentFormatting: put a space between'
     - "Function 'registerMetrics' is too long"
+    - "type assertion must be checked"
+    - "metric name should not include type"
+    - "counter metrics should have"
+    - "variable name 'l' is too short"
+    - "parameter name 'c' is too short"
   exclude-rules:
     # Exclude some linters from running on tests files.
     - path: _test\.go

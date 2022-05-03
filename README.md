@@ -219,50 +219,7 @@ Some useful ressources during development:
 
 ## Changes
 
-```
-0.1.0   Wed Apr 28 09:40:16 CEST 2021
-          - fix setting PrometheusStatusResponseTimeBuckets
-
-0.0.9   Thu Jun 25 14:04:37 CEST 2020
-          - fix compile error on gcc 10 again
-
-0.0.8   Tue Jun 23 22:30:20 CEST 2020
-          - fix compile error on gcc 10
-
-0.0.7   Mon May 18 11:05:59 CEST 2020
-          - fix issue when initally loaded by reload instead of a fresh apache start
-          - improve responding to metrics requests during apache reloads
-          - update example dashboard
-
-0.0.6   Sat May  9 18:15:31 CEST 2020
-          - add vhost to default label names
-          - hide 'disabled' scoreboard entry, its not an actual slot
-          - fix permission issue again
-
-0.0.5   Sat May  9 15:31:40 CEST 2020
-          - add process memory/counter/io metrics
-          - start go metric server in subprocess
-
-0.0.4   Mon May  4 10:28:17 CEST 2020
-          - add example grafana dashboard
-          - add new apache directives:
-            - PrometheusStatusTmpFolder
-            - PrometheusStatusResponseTimeBuckets
-            - PrometheusStatusResponseSizeBuckets
-          - fix permission issue with system apaches starting as root
-
-0.0.3   Wed Apr 29 10:01:17 CEST 2020
-          - fixed reload issue on some systems
-
-0.0.2   Tue Apr 21 16:53:05 CEST 2020
-          - add missing includes
-          - improve build from dist tarball
-
-0.0.1   Tue Apr 21 09:43:37 CEST 2020
-          - initial release
-          - dynamic labeling
-          - basic set of metrics
-```
+see Changelog file.
 
 ## License
 [MIT](https://choosealicense.com/licenses/mit/)

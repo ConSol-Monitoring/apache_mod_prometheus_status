@@ -11,5 +11,6 @@
 *.dylib
 .vscode
 vendor/
+tools/
 mod_prometheus_status_go.h
 *.gz

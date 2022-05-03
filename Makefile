@@ -31,8 +31,15 @@ GOVERSION:=$(shell \
     go version | \
     awk -F'go| ' '{ split($$5, a, /\./); printf ("%04d%04d", a[1], a[2]); exit; }' \
 )
-MINGOVERSION:=00010012
-MINGOVERSIONSTR:=1.12
+MINGOVERSION:=00010016
+MINGOVERSIONSTR:=1.16
+BUILDHASH:=$(shell git rev-parse --short HEAD)
+BUILDDATE:=$(shell LC_TIME=C date +%Y-%d-%m_%T)
+# see https://github.com/go-modules-by-example/index/blob/master/010_tools/README.md
+# and https://github.com/golang/go/wiki/Modules#how-can-i-track-tool-dependencies-for-a-module
+TOOLSFOLDER=$(shell pwd)/tools
+export GOBIN := $(TOOLSFOLDER)
+export PATH := $(GOBIN):$(PATH)
 
 VERSION=$(shell grep "define VERSION" $(WRAPPER_HEADER) | cut -d " " -f 3 | tr -d '"')
 NAME=$(shell grep "define NAME" $(WRAPPER_HEADER) | cut -d " " -f 3 | tr -d '"')
@@ -45,6 +52,14 @@ endif
 .PHONY: vendor
 
 all: build
+
+tools: versioncheck vendor dump
+	go mod download
+	set -e; for DEP in $(shell grep "_ " buildtools/tools.go | awk '{ print $$2 }'); do \
+		go install $$DEP; \
+	done
+	go mod tidy
+	go mod vendor
 
 build: mod_prometheus_status.so
 
@@ -146,14 +161,6 @@ fmt: tools
 	cd $(GO_SRC_DIR) && goimports -w .
 	cd $(GO_SRC_DIR) && go vet -all -assign -atomic -bool -composites -copylocks -nilfunc -rangeloops -unsafeptr -unreachable .
 	cd $(GO_SRC_DIR) && gofmt -w -s .
-
-tools: versioncheck vendor dump
-	go mod download
-	set -e; for DEP in $(shell grep "_ " buildtools/tools.go | awk '{ print $$2 }'); do \
-		go install $$DEP; \
-	done
-	go mod tidy
-	go mod vendor
 
 citest:
 	#
