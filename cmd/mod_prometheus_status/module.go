@@ -45,8 +45,8 @@ const (
 )
 
 //export prometheusStatusInit
-func prometheusStatusInit(metricsSocket, serverDesc *C.char, serverHostName, version *C.char, debug, userID, groupID C.int, labelNames *C.char, mpmName *C.char, socketTimeout int, timeBuckets, sizeBuckets *C.char) C.int {
-	defaultSocketTimeout = socketTimeout
+func prometheusStatusInit(metricsSocket, serverDesc *C.char, serverHostName, version *C.char, debug, userID, groupID C.int, labelNames *C.char, mpmName *C.char, socketTimeout C.int, timeBuckets, sizeBuckets *C.char) C.int {
+	defaultSocketTimeout = int(socketTimeout)
 
 	initLogging(int(debug))
 
