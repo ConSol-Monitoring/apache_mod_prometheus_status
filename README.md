@@ -1,18 +1,20 @@
 # mod_prometheus_status
 
-mod_prometheus_status is a [Prometheus](https://prometheus.io/) white box exporter for [Apache HTTPD](https://httpd.apache.org/) metrics similar to mod_status.
+mod_prometheus_status is a [Prometheus](https://prometheus.io/) white box exporter
+for [Apache HTTPD](https://httpd.apache.org/) with metrics similar to mod_status
+plus per-request metrics.
 
 The exporter is a loadable Apache module and serves metrics directly via the
 apache webserver. It comes with dynamic and flexible labeling, see the example
 configuration below.
 
 ## How it works
-Since prometheus exporter are usually bound to a single process and the apache
+Since prometheus exporters are usually bound to a single process and the apache
 webserver is a multiprocess daemon, this module starts a metrics collector in
 the parent httpd process.
 
-Upon start the main collector creates the prometheus client library registry
-based on the `PrometheusStatusLabelNames`. It then opens a unix socket to
+Upon start of the main collector it creates the prometheus client library registry
+based on the `PrometheusStatusLabelNames`. Then it opens a unix socket to
 receive the metrics updates from the child workers.
 
 On each request, the client worker sends its metrics based on
@@ -28,7 +30,7 @@ collector.
 
 ## Installation
 
-> **_NOTE:_** Prebuild modules are available at https://github.com/ConSol/apache_mod_prometheus_status/releases
+> **_NOTE:_** Prebuild modules are available at [GitHub](https://github.com/ConSol/apache_mod_prometheus_status/releases)
 
 Compile the module like this:
 
@@ -41,7 +43,7 @@ configuration.
 
 ## Configuration
 
-> **_NOTE:_** Loading this module the first time requires a apache restart. Reload is not sufficient.
+> **_NOTE:_** Loading this module the very first time requires a apache restart. Reload is not sufficient. Because the metrics collector runs in the parent process.
 
 ### apache.conf:
 ```apache
