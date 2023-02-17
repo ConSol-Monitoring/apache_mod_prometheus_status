@@ -42,6 +42,9 @@ linters:
     - nlreturn
     - exhaustivestruct
     - cyclop
+    - exhaustruct
+    - nosnakecase
+    - nonamedreturns
   fast: false
 issues:
   max-same-issues: 0

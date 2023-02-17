@@ -32,8 +32,8 @@ GOVERSION:=$(shell \
     go version | \
     awk -F'go| ' '{ split($$5, a, /\./); printf ("%04d%04d", a[1], a[2]); exit; }' \
 )
-MINGOVERSION:=00010016
-MINGOVERSIONSTR:=1.16
+MINGOVERSION:=00010019
+MINGOVERSIONSTR:=1.19
 BUILDHASH:=$(shell git rev-parse --short HEAD)
 BUILDDATE:=$(shell LC_TIME=C date +%Y-%d-%m_%T)
 # see https://github.com/go-modules-by-example/index/blob/master/010_tools/README.md
@@ -179,7 +179,7 @@ citest:
 	#
 	# Checking remaining debug calls
 	#
-	if grep -rn Dump lmd/*.go | grep -v dump.go; then exit 1; fi
+	if grep -rn Dump cmd/*.go | grep -v dump.go; then exit 1; fi
 	#
 	# Run other subtests
 	#
