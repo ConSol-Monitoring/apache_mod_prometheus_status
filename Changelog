@@ -1,5 +1,10 @@
 Changes
 
+0.3.0   Fri Feb 17 08:56:46 CET 2023
+          - update dependencies
+          - bump required golang to 1.19
+          - fix handling c int (#4)
+
 0.2.0   Tue May  3 10:42:58 CEST 2022
           - update dependencies
 

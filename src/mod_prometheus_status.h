@@ -1,4 +1,4 @@
-#define VERSION "0.2.0"
+#define VERSION "0.3.0"
 #define NAME "mod_prometheus_status"
 
 #include "ap_config.h"
