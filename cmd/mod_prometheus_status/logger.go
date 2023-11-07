@@ -11,7 +11,7 @@ import (
 
 const (
 	// LogFormat sets the log format
-	LogFormat = `[%{Date} %{Time "15:04:05.000000"}][mod_prometheus_status][%{Severity}]%{Message}`
+	LogFormat = `[%{Time "Mon Jan 02 15:04:05.000000 2006"}] [mod_prometheus_status:%{severity}] [pid %{Pid}:tid ???] %{Message}`
 
 	// LogVerbosityDebug sets the debug log level
 	LogVerbosityDebug = 2
@@ -45,7 +45,7 @@ func initLogging(enableDebug int) {
 func logf(lvl int, format string, v ...interface{}) {
 	msg := fmt.Sprintf(format, v...)
 	_, file, line, _ := runtime.Caller(2)
-	logmsg := fmt.Sprintf("[pid:%d][%s:%d] %s", os.Getpid(), filepath.Base(file), line, msg)
+	logmsg := fmt.Sprintf("[%s:%d] %s", filepath.Base(file), line, msg)
 	switch lvl {
 	case LogVerbosityError:
 		logger.Errorf(logmsg)
