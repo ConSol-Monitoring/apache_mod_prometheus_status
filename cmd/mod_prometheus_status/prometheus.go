@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -12,9 +13,11 @@ import (
 	"github.com/shirou/gopsutil/process"
 )
 
-var registry *prometheus.Registry
-var collectors = make(map[string]interface{})
-var labelCount = 0
+var (
+	registry   *prometheus.Registry
+	collectors = make(map[string]interface{})
+	labelCount = 0
+)
 
 const (
 	// ProcUpdateInterval set the minimum update interval in seconds for proc statistics
@@ -266,6 +269,9 @@ func updateProcMetrics() {
 	pid := os.Getppid()
 	if pid == 1 {
 		pid = os.Getpid()
+	}
+	if pid >= math.MaxInt32 || pid <= math.MinInt32 {
+		return
 	}
 	mainProcess, _ := process.NewProcess(int32(pid))
 	countProcStats(mainProcess, stats)

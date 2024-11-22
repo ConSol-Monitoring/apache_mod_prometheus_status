@@ -3,13 +3,14 @@ package main
 import (
 	"testing"
 
-	. "github.com/maxatome/go-testdeep"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestExpandBuckets(t *testing.T) {
 	t.Parallel()
 	list := []float64{0.1, 0.5, 1, 10}
 	res, err := expandBuckets(" 0.1;0.5;1; 10")
-	CmpNoError(t, err)
-	CmpDeeply(t, list, res)
+	require.NoError(t, err)
+	assert.Equal(t, list, res)
 }
