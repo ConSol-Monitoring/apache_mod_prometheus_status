@@ -117,7 +117,6 @@ update_readme_available_metrics: testbox_centos8
 	echo '```' > metrics.txt
 	curl -qs http://localhost:3000/metrics >/dev/null 2>&1 # warm up metrics
 	curl -qs http://localhost:3000/metrics | grep ^# | grep apache | sort -k 3 >> metrics.txt
-	sed -e 's/^#/  #/' -i metrics.txt
 	echo '```' >> metrics.txt
 	sed -e '/^\ *\# \(HELP\|TYPE\)/d' -i README.md
 	sed -zE 's/```\n```/###METRICS###/' -i README.md
