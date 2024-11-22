@@ -32,8 +32,8 @@ GOVERSION:=$(shell \
     go version | \
     awk -F'go| ' '{ split($$5, a, /\./); printf ("%04d%04d", a[1], a[2]); exit; }' \
 )
-MINGOVERSION:=00010019
-MINGOVERSIONSTR:=1.19
+MINGOVERSION:=00010022
+MINGOVERSIONSTR:=1.22
 BUILDHASH:=$(shell git rev-parse --short HEAD)
 BUILDDATE:=$(shell LC_TIME=C date +%Y-%d-%m_%T)
 # see https://github.com/go-modules-by-example/index/blob/master/010_tools/README.md
@@ -41,6 +41,8 @@ BUILDDATE:=$(shell LC_TIME=C date +%Y-%d-%m_%T)
 TOOLSFOLDER=$(shell pwd)/tools
 export GOBIN := $(TOOLSFOLDER)
 export PATH := $(GOBIN):$(PATH)
+
+GO=go
 
 VERSION=$(shell grep "define VERSION" $(WRAPPER_HEADER) | cut -d " " -f 3 | tr -d '"')
 NAME=$(shell grep "define NAME" $(WRAPPER_HEADER) | cut -d " " -f 3 | tr -d '"')
@@ -54,13 +56,46 @@ endif
 
 all: build
 
-tools: versioncheck vendor dump
-	go mod download
-	set -e; for DEP in $(shell grep "_ " buildtools/tools.go | awk '{ print $$2 }'); do \
-		go install $$DEP; \
+CMDS = $(shell cd ./cmd && ls -1)
+
+tools: | versioncheck
+	set -e; for DEP in $(shell grep "_ " buildtools/tools.go | awk '{ print $$2 }' | grep -v go-spew); do \
+		( cd buildtools && $(GO) install $$DEP@latest ) ; \
 	done
-	go mod tidy
-	go mod vendor
+	set -e; for DEP in $(shell grep "_ " buildtools/tools.go | awk '{ print $$2 }' | grep go-spew); do \
+		( cd buildtools && $(GO) install $$DEP ) ; \
+	done
+	( cd buildtools && $(GO) mod tidy )
+
+updatedeps: versioncheck
+	$(MAKE) clean
+	$(MAKE) tools
+	$(GO) mod download
+	set -e; for dir in $(shell ls -d1 cmd/*); do \
+		( cd ./$$dir && $(GO) mod download ); \
+		( cd ./$$dir && GOPROXY=direct $(GO) get -u ); \
+		( cd ./$$dir && GOPROXY=direct $(GO) get -t -u ); \
+	done
+	$(GO) mod download
+	$(MAKE) cleandeps
+
+cleandeps:
+	set -e; for dir in $(shell ls -d1 cmd/*); do \
+		( cd ./$$dir && $(GO) mod tidy ); \
+	done
+	$(GO) mod tidy
+	( cd buildtools && $(GO) mod tidy )
+
+vendor: go.work
+	$(GO) mod download
+	$(GO) mod tidy
+	GOWORK=off $(GO) mod vendor
+
+go.work:
+	echo "go $(MINGOVERSIONSTR)" > go.work
+	$(GO) work use . cmd/* buildtools/.
+
+
 
 build: mod_prometheus_status.so
 
@@ -89,21 +124,6 @@ update_readme_available_metrics: testbox_centos8
 	sed -e '/###METRICS###/r metrics.txt' -i README.md
 	sed -e '/###METRICS###/d' -i README.md
 	rm metrics.txt
-
-updatedeps: versioncheck
-	$(MAKE) clean
-	go mod download
-	set -e; for DEP in $(shell grep "_ " buildtools/tools.go | awk '{ print $$2 }'); do \
-		go get $$DEP; \
-	done
-	go get -u ./...
-	go get -t -u ./...
-	go mod tidy
-
-vendor:
-	go mod download
-	go mod tidy
-	go mod vendor
 
 dist:
 	rm -f $(NAME)-$(VERSION).tar.gz
@@ -158,10 +178,17 @@ dump:
 	fi
 	rm -f $(GO_SRC_DIR)/dump.go.bak
 
+GOVET=$(GO) vet -all
+SRCFOLDER=./cmd/. ./buildtools/.
 fmt: tools
-	cd $(GO_SRC_DIR) && goimports -w .
-	cd $(GO_SRC_DIR) && go vet -all -assign -atomic -bool -composites -copylocks -nilfunc -rangeloops -unsafeptr -unreachable .
-	cd $(GO_SRC_DIR) && gofmt -w -s .
+	set -e; for CMD in $(CMDS); do \
+		$(GOVET) ./cmd/$$CMD; \
+	done
+	gofmt -w -s $(SRCFOLDER)
+	./tools/gofumpt -w $(SRCFOLDER)
+	./tools/gci write --skip-generated $(SRCFOLDER)
+	./tools/goimports -w $(SRCFOLDER)
+
 
 citest:
 	#

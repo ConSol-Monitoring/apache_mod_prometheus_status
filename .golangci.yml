@@ -24,30 +24,32 @@ linters-settings:
     statements: 120
   gocognit:
     min-complexity: 35
+  exhaustive:
+    default-signifies-exhaustive: true
 linters:
   enable-all: true
+  fast: false
   disable:
-    - maligned
-    - nakedret
-    - gochecknoglobals
-    - errcheck
-    - lll
-    - gochecknoinits
+    - cyclop
+    - depguard
     - dupl
+    - errcheck
+    - exhaustruct
+    - gochecknoglobals
+    - gochecknoinits
     - goconst
-    - interfacer
-    - wsl
     - godot
     - gofumpt
+    - lll
+    - nakedret
     - nlreturn
-    - exhaustivestruct
-    - cyclop
-    - exhaustruct
-    - nosnakecase
     - nonamedreturns
-  fast: false
+    - wsl
+    # deprecated
+    - exportloopref
 issues:
   max-same-issues: 0
+  max-issues-per-linter: 0
   exclude-use-default: true
   exclude:
     - "`noCopy` is unused"

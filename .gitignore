@@ -12,5 +12,7 @@
 .vscode
 vendor/
 tools/
+go.work
+go.work.sum
 mod_prometheus_status_go.h
 *.gz
