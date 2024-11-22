@@ -1,5 +1,8 @@
 Changes
 
+0.3.2   Fri Nov 22 14:58:40 CET 2024
+          - migrate example dashboard to react panels
+
 0.3.1   Wed Nov  8 11:07:40 CET 2023
           - change log format to match apaches own logs
 
