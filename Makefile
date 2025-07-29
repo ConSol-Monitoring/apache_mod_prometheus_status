@@ -32,8 +32,8 @@ GOVERSION:=$(shell \
     go version | \
     awk -F'go| ' '{ split($$5, a, /\./); printf ("%04d%04d", a[1], a[2]); exit; }' \
 )
-MINGOVERSION:=00010022
-MINGOVERSIONSTR:=1.22
+MINGOVERSION:=00010023
+MINGOVERSIONSTR:=1.23
 BUILDHASH:=$(shell git rev-parse --short HEAD)
 BUILDDATE:=$(shell LC_TIME=C date +%Y-%d-%m_%T)
 # see https://github.com/go-modules-by-example/index/blob/master/010_tools/README.md
@@ -51,8 +51,6 @@ BUILD_TAG=$(shell git rev-parse --short HEAD >/dev/null 2>&1 >/dev/null 2>&1)
 ifeq ($(BUILD_TAG),)
   BUILD_TAG=$(VERSION)
 endif
-
-.PHONY: vendor
 
 all: build
 
@@ -105,6 +103,7 @@ install: mod_prometheus_status.so
 
 clean:
 	rm -rf *.so src/.libs/ src/*.la src/*.lo src/*.slo mod_prometheus_status_go.h
+	rm -rf vendor/
 	-$(MAKE) -C t clean
 
 test: citest releasetest

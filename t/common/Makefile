@@ -13,19 +13,19 @@ wait_start:
 	done
 
 test: wait_start
-	docker-compose exec $(DOCKER_COMPOSE_TTY) --user root apache /src/t/common/local_test.sh 0
+	docker compose exec $(DOCKER_COMPOSE_TTY) --user root apache /src/t/common/local_test.sh 0
 
 test_verbose: wait_start
-	docker-compose exec $(DOCKER_COMPOSE_TTY) --user root apache /src/t/common/local_test.sh 1
+	docker compose exec $(DOCKER_COMPOSE_TTY) --user root apache /src/t/common/local_test.sh 1
 
 prepare:
-	docker-compose build
-	docker-compose up --remove-orphans -d
+	docker compose build
+	docker compose up --remove-orphans -d
 	docker ps
 	@echo "waiting for testbox to provisioning"
-	@docker-compose logs -f | while read LOGLINE; do \
+	@docker compose logs -f | while read LOGLINE; do \
 		echo "$${LOGLINE}"; \
-		[[ "$${LOGLINE}" == *"Starting Apache web server"* ]] && pkill -P $$$$ docker-compose && exit 0; \
+		[[ "$${LOGLINE}" == *"Starting Apache web server"* ]] && pkill -P $$$$ docker compose && exit 0; \
 	done
 	@echo "************************************************************************************"
 	@echo "testbox startup complete:"
@@ -36,11 +36,11 @@ prepare:
 	@echo ""
 
 clean:
-	docker-compose kill
-	docker-compose rm -f
+	docker compose kill
+	docker compose rm -f
 	-docker network prune -f
 	-[ $$(docker ps -q | wc -l) -eq 0 ] || docker kill $$(docker ps -q)
 
 update:
-	docker-compose pull
+	docker compose pull
 	for IMG in $$(grep FROM */Dockerfile | awk '{ print $$2 }' | sort -u); do docker pull $$IMG; done

@@ -1,5 +1,9 @@
 Changes
 
+next:
+          - update dependencies
+          - bump required golang to 1.23
+
 0.3.2   Fri Nov 22 14:58:40 CET 2024
           - migrate example dashboard to react panels
 
