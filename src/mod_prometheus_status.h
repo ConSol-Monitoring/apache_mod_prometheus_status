@@ -1,6 +1,10 @@
 #define VERSION "0.3.2"
 #define NAME "mod_prometheus_status"
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #include "ap_config.h"
 #include "apr_lib.h"
 #include "apr_strings.h"
@@ -14,6 +18,7 @@
 #include "mod_unixd.h"
 #include "mod_log_config.h"
 #include <unistd.h>
+#include <link.h>
 #include <dlfcn.h>
 #include <sys/socket.h>
 #include <sys/un.h>
