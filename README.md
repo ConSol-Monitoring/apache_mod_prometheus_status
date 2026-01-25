@@ -26,7 +26,7 @@ collector.
 
 - gcc compiler to build (4.9 or newer)
   - apache header files
-- golang >= 1.22
+- golang
 - docker/docker-compose for running tests
 
 ## Installation
