@@ -11,7 +11,7 @@ jobs:
       uses: actions/setup-go@v2
       with:
         go-version-file: './go.mod'
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v6
     - run: sudo apt-get -y update
     - run: sudo apt-get -y install apache2-dev make gcc
     - run: make clean
