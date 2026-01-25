@@ -123,11 +123,11 @@ const char *prometheus_status_set_label_values(cmd_parms *cmd, void *cfg, const 
 }
 
 /* open the communication socket */
-static int prometheus_status_open_communication_socket() {
+static int prometheus_status_open_communication_socket(int *fd) {
     struct sockaddr_un addr;
     addr.sun_family = AF_UNIX;
     // reuse if already open
-    if(metric_socket_fd != 0) {
+    if(*fd != 0) {
         return(TRUE);
     }
     // not yet initialized
@@ -135,9 +135,9 @@ static int prometheus_status_open_communication_socket() {
         return(FALSE);
     }
     strcpy(addr.sun_path, metric_socket);
-    metric_socket_fd = socket(PF_UNIX, SOCK_STREAM, 0);
-    if(connect(metric_socket_fd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
-        logDebugf("failed to open metrics socket: socket:%s fd:%d errno:%d (%s)", metric_socket, metric_socket_fd, errno, strerror(errno));
+    *fd = socket(PF_UNIX, SOCK_STREAM, 0);
+    if(connect(*fd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
+        logDebugf("failed to open metrics socket: socket:%s fd:%d errno:%d (%s)", metric_socket, *fd, errno, strerror(errno));
         return(FALSE);
     }
 
@@ -145,13 +145,13 @@ static int prometheus_status_open_communication_socket() {
     timeout.tv_sec  = DEFAULTSOCKETTIMEOUT;
     timeout.tv_usec = 0;
 
-    if(setsockopt(metric_socket_fd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout)) == -1) {
-        logErrorf("setsockopt failed: socket:%s fd:%d errno:%d (%s)", metric_socket, metric_socket_fd, errno, strerror(errno));
+    if(setsockopt(*fd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout)) == -1) {
+        logErrorf("setsockopt failed: socket:%s fd:%d errno:%d (%s)", metric_socket, *fd, errno, strerror(errno));
         return(FALSE);
     }
 
-    if(setsockopt(metric_socket_fd, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout, sizeof(timeout)) == -1) {
-        logErrorf("setsockopt failed: socket:%s fd:%d errno:%d (%s)", metric_socket, metric_socket_fd, errno, strerror(errno));
+    if(setsockopt(*fd, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout, sizeof(timeout)) == -1) {
+        logErrorf("setsockopt failed: socket:%s fd:%d errno:%d (%s)", metric_socket, *fd, errno, strerror(errno));
         return(FALSE);
     }
 
@@ -159,23 +159,23 @@ static int prometheus_status_open_communication_socket() {
 }
 
 /* close the communication socket */
-static int prometheus_status_close_communication_socket() {
-    if(metric_socket_fd == 0) {
+static int prometheus_status_close_communication_socket(int *fd) {
+    if(*fd == 0) {
         return(TRUE);
     }
-    close(metric_socket_fd);
-    metric_socket_fd = 0;
+    close(*fd);
+    *fd = 0;
     return(TRUE);
 }
 
 /* send something over the communication socket */
-static int prometheus_status_send_communication_socket(const char *fmt, ...) {
+static int prometheus_status_send_communication_socket(int *fd, const char *fmt, ...) {
     char buffer[4096];
     int nbytes;
     va_list ap;
 
     // open socket unless open
-    if(!prometheus_status_open_communication_socket()) {
+    if(!prometheus_status_open_communication_socket(fd)) {
         return(FALSE);
     }
 
@@ -183,11 +183,11 @@ static int prometheus_status_send_communication_socket(const char *fmt, ...) {
     nbytes = vsnprintf(buffer, 4096, fmt, ap);
     va_end(ap);
 
-    if(write(metric_socket_fd, buffer, nbytes) < 0) {
-        logDebugf("failed to send to metrics collector: socket:%s fd:%d errno:%d (%s)", metric_socket, metric_socket_fd, errno, strerror(errno));
-        prometheus_status_close_communication_socket();
+    if(write(*fd, buffer, nbytes) < 0) {
+        logDebugf("failed to send to metrics collector: socket:%s fd:%d errno:%d (%s)", metric_socket, *fd, errno, strerror(errno));
+        prometheus_status_close_communication_socket(fd);
     }
-    return(TRUE);
+    return *fd != 0;
 }
 
 /* gather non-request runtime metrics */
@@ -219,13 +219,13 @@ static int prometheus_status_monitor() {
 
     nowtime = apr_time_now();
     uptime = (apr_uint32_t) apr_time_sec(nowtime - ap_scoreboard_image->global->restart_time);
-    prometheus_status_send_communication_socket("server:promServerUptime;%ld\n", uptime);
+    prometheus_status_send_communication_socket(&metric_socket_fd, "server:promServerUptime;%ld\n", uptime);
 
-    prometheus_status_send_communication_socket("server:promMPMGeneration;%d\n", mpm_generation);
-    prometheus_status_send_communication_socket("server:promConfigGeneration;%d\n", ap_state_query(AP_SQ_CONFIG_GEN));
+    prometheus_status_send_communication_socket(&metric_socket_fd, "server:promMPMGeneration;%d\n", mpm_generation);
+    prometheus_status_send_communication_socket(&metric_socket_fd, "server:promConfigGeneration;%d\n", ap_state_query(AP_SQ_CONFIG_GEN));
 
     ap_get_loadavg(&cpu);
-    prometheus_status_send_communication_socket("server:promCPULoad;%f\n", cpu.loadavg);
+    prometheus_status_send_communication_socket(&metric_socket_fd, "server:promCPULoad;%f\n", cpu.loadavg);
 
     for(i = 0; i < server_limit; ++i) {
         ps_record = ap_get_scoreboard_process(i);
@@ -253,20 +253,20 @@ static int prometheus_status_monitor() {
         }
     }
 
-    prometheus_status_send_communication_socket("server:promScoreboard;%d;idle\n",          status_flags[SERVER_READY]);
-    prometheus_status_send_communication_socket("server:promScoreboard;%d;startup\n",       status_flags[SERVER_STARTING]);
-    prometheus_status_send_communication_socket("server:promScoreboard;%d;read\n",          status_flags[SERVER_BUSY_READ]);
-    prometheus_status_send_communication_socket("server:promScoreboard;%d;reply\n",         status_flags[SERVER_BUSY_WRITE]);
-    prometheus_status_send_communication_socket("server:promScoreboard;%d;keepalive\n",     status_flags[SERVER_BUSY_KEEPALIVE]);
-    prometheus_status_send_communication_socket("server:promScoreboard;%d;logging\n",       status_flags[SERVER_BUSY_LOG]);
-    prometheus_status_send_communication_socket("server:promScoreboard;%d;closing\n",       status_flags[SERVER_CLOSING]);
-    prometheus_status_send_communication_socket("server:promScoreboard;%d;graceful_stop\n", status_flags[SERVER_GRACEFUL]);
-    prometheus_status_send_communication_socket("server:promScoreboard;%d;idle_cleanup\n",  status_flags[SERVER_IDLE_KILL]);
+    prometheus_status_send_communication_socket(&metric_socket_fd, "server:promScoreboard;%d;idle\n",          status_flags[SERVER_READY]);
+    prometheus_status_send_communication_socket(&metric_socket_fd, "server:promScoreboard;%d;startup\n",       status_flags[SERVER_STARTING]);
+    prometheus_status_send_communication_socket(&metric_socket_fd, "server:promScoreboard;%d;read\n",          status_flags[SERVER_BUSY_READ]);
+    prometheus_status_send_communication_socket(&metric_socket_fd, "server:promScoreboard;%d;reply\n",         status_flags[SERVER_BUSY_WRITE]);
+    prometheus_status_send_communication_socket(&metric_socket_fd, "server:promScoreboard;%d;keepalive\n",     status_flags[SERVER_BUSY_KEEPALIVE]);
+    prometheus_status_send_communication_socket(&metric_socket_fd, "server:promScoreboard;%d;logging\n",       status_flags[SERVER_BUSY_LOG]);
+    prometheus_status_send_communication_socket(&metric_socket_fd, "server:promScoreboard;%d;closing\n",       status_flags[SERVER_CLOSING]);
+    prometheus_status_send_communication_socket(&metric_socket_fd, "server:promScoreboard;%d;graceful_stop\n", status_flags[SERVER_GRACEFUL]);
+    prometheus_status_send_communication_socket(&metric_socket_fd, "server:promScoreboard;%d;idle_cleanup\n",  status_flags[SERVER_IDLE_KILL]);
     // disabled slots are not actual worker
-    //prometheus_status_send_communication_socket("server:promScoreboard;%d;disabled\n",      status_flags[SERVER_DISABLED]);
+    //prometheus_status_send_communication_socket(&metric_socket_fd, "server:promScoreboard;%d;disabled\n",      status_flags[SERVER_DISABLED]);
 
-    prometheus_status_send_communication_socket("server:promWorkers;%d;ready\n", ready);
-    prometheus_status_send_communication_socket("server:promWorkers;%d;busy\n", busy);
+    prometheus_status_send_communication_socket(&metric_socket_fd, "server:promWorkers;%d;ready\n", ready);
+    prometheus_status_send_communication_socket(&metric_socket_fd, "server:promWorkers;%d;busy\n", busy);
 
     return OK;
 }
@@ -292,7 +292,7 @@ static int prometheus_status_handler(request_rec *r) {
 
     ap_set_content_type(r, "text/plain");
 
-    if(!prometheus_status_send_communication_socket("metrics\n")) {
+    if(!prometheus_status_send_communication_socket(&metric_socket_fd, "metrics\n")) {
         ap_rputs("ERROR: failed fetch metrics\n", r);
         logErrorf("failed fetch metrics: socket:%s fd:%d", metric_socket, metric_socket_fd);
         return(HTTP_INTERNAL_SERVER_ERROR);
@@ -315,7 +315,7 @@ static int prometheus_status_handler(request_rec *r) {
         }
     }
 
-    prometheus_status_close_communication_socket();
+    prometheus_status_close_communication_socket(&metric_socket_fd);
 
     return(OK);
 }
@@ -325,6 +325,7 @@ static int prometheus_status_counter(request_rec *r) {
     apr_time_t now = apr_time_now();
     apr_time_t duration = now - r->request_time;
 
+    int fd = 0;
     // is the module enabled at all?
     prometheus_status_config *cfg = (prometheus_status_config*) ap_get_module_config(r->per_dir_config, &prometheus_status_module);
     if(cfg->enabled == 0) {
@@ -335,10 +336,10 @@ static int prometheus_status_counter(request_rec *r) {
     apr_array_header_t *format = cfg->label_format != NULL ? cfg->label_format : config.label_format;
     prometheus_status_expand_variables(format, r, &label);
 
-    prometheus_status_send_communication_socket("request:promRequests;1;%s\n", label);
-    prometheus_status_send_communication_socket("request:promResponseTime;%f;%s\n", (long)duration/(double)APR_USEC_PER_SEC, label);
-    prometheus_status_send_communication_socket("request:promResponseSize;%d;%s\n", (int)r->bytes_sent, label);
-    prometheus_status_close_communication_socket();
+    prometheus_status_send_communication_socket(&fd, "request:promRequests;1;%s\n", label);
+    prometheus_status_send_communication_socket(&fd, "request:promResponseTime;%f;%s\n", (long)duration/(double)APR_USEC_PER_SEC, label);
+    prometheus_status_send_communication_socket(&fd, "request:promResponseSize;%d;%s\n", (int)r->bytes_sent, label);
+    prometheus_status_close_communication_socket(&fd);
     return(OK);
 }
 
