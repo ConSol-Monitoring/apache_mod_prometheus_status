@@ -32,8 +32,8 @@ GOVERSION:=$(shell \
     go version | \
     awk -F'go| ' '{ split($$5, a, /\./); printf ("%04d%04d", a[1], a[2]); exit; }' \
 )
-MINGOVERSION:=00010023
-MINGOVERSIONSTR:=1.23
+MINGOVERSION:=00010024
+MINGOVERSIONSTR:=1.24
 BUILDHASH:=$(shell git rev-parse --short HEAD)
 BUILDDATE:=$(shell LC_TIME=C date +%Y-%d-%m_%T)
 # see https://github.com/go-modules-by-example/index/blob/master/010_tools/README.md
