@@ -4,7 +4,6 @@
 
 MAKE:=make
 SHELL:=bash
-APXS=./apxs.sh
 WRAPPER_SOURCE=src/mod_prometheus_status.c src/mod_prometheus_status_format.c
 WRAPPER_HEADER=src/mod_prometheus_status.h
 GO_SRC_DIR=cmd/mod_prometheus_status
@@ -14,7 +13,7 @@ GO_SOURCES=\
 		$(GO_SRC_DIR)/prometheus.go\
 		$(GO_SRC_DIR)/module.go
 DISTFILES=\
-	$(APXS) \
+	apxs.sh \
 	$(GO_SOURCES) \
 	$(WRAPPER_SOURCE) \
 	$(WRAPPER_HEADER) \
@@ -231,7 +230,7 @@ golangci: tools
 	golangci-lint run $(GO_SRC_DIR)/...
 
 mod_prometheus_status.so: mod_prometheus_status_go.so $(WRAPPER_SOURCE)
-	$(APXS) -c -n $@ -I. $(LIBS) $(WRAPPER_SOURCE)
+	./apxs.sh -c -n $@ -I. $(LIBS) $(WRAPPER_SOURCE)
 	install src/.libs/mod_prometheus_status.so mod_prometheus_status.so
 
 mod_prometheus_status_go.so: $(GO_SOURCES) dump
