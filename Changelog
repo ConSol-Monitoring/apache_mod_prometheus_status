@@ -1,5 +1,8 @@
 Changes
 
+0.3.4   Wed Apr  8 16:11:24 CEST 2026
+          - fix release tarball
+
 0.3.3   Sun Jan 25 20:11:35 CET 2026
           - make module thread safe
           - update dependencies

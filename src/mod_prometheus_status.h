@@ -1,4 +1,4 @@
-#define VERSION "0.3.3"
+#define VERSION "0.3.4"
 #define NAME "mod_prometheus_status"
 
 #ifndef _GNU_SOURCE
