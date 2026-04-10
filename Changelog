@@ -2,6 +2,7 @@ Changes
 
 next:
           - update dependencies
+          - fix build issue with c23
 
 0.3.4   Wed Apr  8 16:11:24 CEST 2026
           - fix release tarball

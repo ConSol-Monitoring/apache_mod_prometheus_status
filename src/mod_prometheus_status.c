@@ -34,7 +34,22 @@ static prometheus_status_config config;
 /* Server object for main server as supplied to prometheus_status_init(). */
 static server_rec *main_server = NULL;
 
-int (*prometheusStatusInitFn)() = NULL;
+typedef int (*prometheus_status_init_fn_t)(
+    char *metricsSocket,
+    char *serverDesc,
+    char *serverHostName,
+    char *version,
+    int debug,
+    int userID,
+    int groupID,
+    char *labelNames,
+    char *mpmName,
+    int socketTimeout,
+    char *timeBuckets,
+    char *sizeBuckets
+);
+
+static prometheus_status_init_fn_t prometheusStatusInitFn = NULL;
 char *metric_socket = NULL;
 int metric_socket_fd = 0;
 
@@ -374,22 +389,22 @@ static void prometheus_status_load_gomodule(apr_pool_t *p, server_rec *s) {
     }
     logDebugf("prometheus_status_load_gomodule gomodule loaded");
 
-    prometheusStatusInitFn = dlsym(go_module_handle, "prometheusStatusInit");
+    prometheusStatusInitFn = (prometheus_status_init_fn_t)dlsym(go_module_handle, "prometheusStatusInit");
 
     // run go initializer
     int rc = (*prometheusStatusInitFn)(
         metric_socket,
-        ap_get_server_description(),
-        s->server_hostname,
-        VERSION,
+        (char *)ap_get_server_description(),
+        (char *)s->server_hostname,
+        (char *)VERSION,
         config.debug,
         ap_unixd_config.user_id,
         ap_unixd_config.group_id,
-        config.label_names,
-        mpm_name,
+        (char *)config.label_names,
+        (char *)mpm_name,
         DEFAULTSOCKETTIMEOUT,
-        config.time_buckets,
-        config.size_buckets
+        (char *)config.time_buckets,
+        (char *)config.size_buckets
     );
     if(rc != 0) {
         logErrorf("mod_prometheus_status initializing failed");
