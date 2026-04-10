@@ -1,6 +1,6 @@
 Changes
 
-next:
+0.3.5   Fri Apr 10 14:27:21 CEST 2026
           - update dependencies
           - fix build issue with c23
 
