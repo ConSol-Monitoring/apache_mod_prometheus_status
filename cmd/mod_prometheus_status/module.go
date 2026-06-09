@@ -86,11 +86,13 @@ func startMetricServer(startChannel chan bool, socketPath string, userID, groupI
 		return
 	}
 	defer l.Close()
-	err = os.Chown(socketPath, userID, groupID)
-	if err != nil {
-		logErrorf("cannot chown metricssocket: %s", err.Error())
-		startChannel <- false
-		return
+	if os.Geteuid() == 0 {
+		err = os.Chown(socketPath, userID, groupID)
+		if err != nil {
+			logErrorf("cannot chown metricssocket: %s", err.Error())
+			startChannel <- false
+			return
+		}
 	}
 
 	logDebugf("listening on metricsSocket: %s", socketPath)
