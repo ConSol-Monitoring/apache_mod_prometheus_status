@@ -4,7 +4,7 @@ go 1.26.0
 
 require (
 	github.com/kdar/factorlog v0.0.0-20211012144011-6ea75a169038
-	github.com/prometheus/client_golang v1.24.0
+	github.com/prometheus/client_golang v1.24.1
 	github.com/prometheus/common v0.70.1
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/stretchr/testify v1.11.1
