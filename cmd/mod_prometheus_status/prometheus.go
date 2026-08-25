@@ -253,13 +253,13 @@ func metricsGet() []byte {
 	gathering, err := registry.Gather()
 	if err != nil {
 		logErrorf("internal prometheus error: %s", err.Error())
-		return (buf.Bytes())
+		return buf.Bytes()
 	}
 	for _, m := range gathering {
 		expfmt.MetricFamilyToText(&buf, m)
 	}
 	buf.WriteString("\n\n")
-	return (buf.Bytes())
+	return buf.Bytes()
 }
 
 // updateProcMetrics updates memory statistics for all children with match httpd/apache in its cmdline

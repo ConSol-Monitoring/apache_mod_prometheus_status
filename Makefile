@@ -103,6 +103,7 @@ install: mod_prometheus_status.so
 clean:
 	rm -rf *.so src/.libs/ src/*.la src/*.lo src/*.slo mod_prometheus_status_go.h
 	rm -rf vendor/
+	rm -rf tools/
 	-$(MAKE) -C t clean
 
 test: citest releasetest
